@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isPaid() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.paymentStatus == 'paid';
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      // Rules for user subcollections (e.g. checkout_sessions)
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Rules for the 'orders' collection
+    match /orders/{orderId} {
+      // Admins can read all orders; clients can only read their own orders
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      
+      // Authenticated users can create orders for themselves.
+      // Strict parameter checking is applied to prevent database pollution or resource abuse.
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.clientEmail == request.auth.token.email
+        && request.resource.data.userId is string && request.resource.data.userId.size() <= 100
+        && request.resource.data.clientEmail is string && request.resource.data.clientEmail.size() <= 255
+        && request.resource.data.clientName is string && request.resource.data.clientName.size() <= 100
+        && request.resource.data.plan is string && request.resource.data.plan.size() <= 50
+        && request.resource.data.status is string && request.resource.data.status.size() <= 30
+        && request.resource.data.selectedMeals is list && request.resource.data.selectedMeals.size() <= 20
+        && request.resource.data.pago_pendiente is bool;
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Rules for Dishes collection
+    match /Dishes/{dishId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Rules for WeeklyMenus collection
+    match /WeeklyMenus/{menuId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Rules for UserSelections collection
+    match /UserSelections/{selectionId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated() && (isAdmin() || (request.resource.data.userId == request.auth.uid && isPaid()));
+    }
+
+    // Default deny rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

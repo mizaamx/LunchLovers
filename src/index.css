@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-retro-crema text-retro-terracota font-sans antialiased scroll-smooth;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-retro-terracota font-bold tracking-tight;
+  }
+}
+
+/* Glassmorphism custom classes - Modern and Premium */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(176, 90, 50, 0.12);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(176, 90, 50, 0.15);
+  box-shadow: 0 10px 30px -5px rgba(176, 90, 50, 0.05), 0 4px 12px -2px rgba(176, 90, 50, 0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(176, 90, 50, 0.1), 0 8px 16px -4px rgba(176, 90, 50, 0.04);
+}
+
+.glass-card-active {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 2px solid rgba(218, 158, 83, 0.6); /* mostaza border */
+  box-shadow: 0 20px 40px -10px rgba(218, 158, 83, 0.15);
+}
+
+.glass-mostaza {
+  background: rgba(254, 243, 199, 0.6); /* light mostaza */
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(218, 158, 51, 0.3);
+}
+
+.glass-terracota {
+  background: rgba(255, 241, 232, 0.6); /* light terracota */
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(176, 90, 50, 0.3);
+}
+
+/* Custom premium scrollbar in Terracota and Crema */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F4EBDC;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(176, 90, 50, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(176, 90, 50, 0.8);
+}
+
+/* Custom glassmorphism with refraction border and shadow, optimized for GPU rendering */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+    0 4px 24px -1px rgba(176, 90, 50, 0.05),
+    0 20px 40px -15px rgba(176, 90, 50, 0.08);
+  will-change: transform, opacity;
+}
+
+.liquid-glass-active {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1.5px solid rgba(176, 90, 50, 0.55);
+  box-shadow: 
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.5),
+    0 10px 30px -10px rgba(176, 90, 50, 0.15),
+    0 25px 50px -12px rgba(176, 90, 50, 0.2);
+  will-change: transform, opacity;
+}
+
+/* Antigravity 3D Depth Utilities */
+.depth-container {
+  perspective: 1200px;
+}
+
