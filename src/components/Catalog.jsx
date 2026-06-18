@@ -137,9 +137,13 @@ export default function Catalog() {
     if (!user) return false; // Demo mode for guests
     if (!plan) return false; // Demo mode for registered no plan
     
-    if (plan === 'basic' && slotId !== 'comida') return true;
-    if (plan === 'normal' && slotId === 'snack') return true;
-    return false; // Pro: all unlocked
+    if (['cal800_1', 'cal600_1', 'comida_diaria', 'godinez', 'basic'].includes(plan)) {
+      return slotId !== 'comida';
+    }
+    if (['cal800_2', 'cal600_2', 'normal'].includes(plan)) {
+      return slotId === 'snack' || slotId === 'bebida';
+    }
+    return false; // cal800_3, cal600_3, pro: all unlocked
   }, [user, plan]);
 
   // Handle assigning a dish to the active slot
@@ -600,8 +604,7 @@ export default function Catalog() {
                       </div>
 
                       {/* Action Row */}
-                      <div className="mt-4 pt-3 border-t border-retro-terracota/5 flex items-center justify-between gap-2">
-                        <span className="text-xs font-black text-emerald-800">$99.00 MXN</span>
+                      <div className="mt-4 pt-3 border-t border-retro-terracota/5 flex items-center justify-end gap-2">
                         
                         <div className="flex items-center space-x-1.5">
                           {!user ? (

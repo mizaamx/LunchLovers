@@ -20,10 +20,26 @@ export default function RequirePaymentGate({ children }) {
   // If user payment is pending, completely unmount children and show payment required gate
   if (user.paymentStatus === 'pending') {
     const handleCopyClabe = () => {
-      navigator.clipboard.writeText('123456789012345678');
+      navigator.clipboard.writeText('5579100476535206');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     };
+
+    const plansInfo = {
+      cal800_1: { name: 'Plan 800 Kcal (1 Comida)', price: '$800.00 MXN / sem' },
+      cal800_2: { name: 'Plan 800 Kcal (2 Comidas)', price: '$1,350.00 MXN / sem' },
+      cal800_3: { name: 'Plan 800 Kcal (3 Comidas)', price: '$1,800.00 MXN / sem' },
+      cal600_1: { name: 'Plan 600 Kcal (1 Comida)', price: '$650.00 MXN / sem' },
+      cal600_2: { name: 'Plan 600 Kcal (2 Comidas)', price: '$1,250.00 MXN / sem' },
+      cal600_3: { name: 'Plan 600 Kcal (3 Comidas)', price: '$1,700.00 MXN / sem' },
+      godinez: { name: 'Paquete Godínez', price: '$750.00 MXN / sem' },
+      comida_diaria: { name: 'Comida Diaria (Flexible)', price: '$125.00 MXN / comida' },
+      basic: { name: 'Plan Básico', price: '$29.00 MXN / mes' },
+      normal: { name: 'Plan Normal', price: '$99.00 MXN / mes' },
+      pro: { name: 'Plan Pro', price: '$99.00 MXN / mes' }
+    };
+
+    const planDetails = plansInfo[user.plan] || { name: 'Plan Seleccionado', price: 'Pendiente de calcular' };
 
     return (
       <div className="w-full py-16 px-4 bg-retro-crema/20 flex justify-center items-center font-sans">
@@ -63,16 +79,16 @@ export default function RequirePaymentGate({ children }) {
               <div className="bg-stone-50 border border-retro-terracota/10 rounded-2xl p-5 space-y-3.5 text-xs font-bold text-retro-terracota/80">
                 <div className="flex justify-between border-b border-stone-200/60 pb-2">
                   <span className="text-retro-terracota/60">Banco:</span>
-                  <span className="text-retro-terracota font-black">BBVA Bancomer</span>
+                  <span className="text-retro-terracota font-black">SANTANDER</span>
                 </div>
                 <div className="flex justify-between border-b border-stone-200/60 pb-2">
                   <span className="text-retro-terracota/60">Beneficiario:</span>
-                  <span className="text-retro-terracota font-black">Lunch Lovers GDL S.A. de C.V.</span>
+                  <span className="text-retro-terracota font-black">Susana Ruiz Cazares</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-stone-200/60 pb-2">
                   <span className="text-retro-terracota/60">CLABE Interbancaria:</span>
                   <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-lg border border-retro-terracota/5">
-                    <span className="text-retro-terracota font-black select-all tracking-wide">123456789012345678</span>
+                    <span className="text-retro-terracota font-black select-all tracking-wide">5579100476535206</span>
                     <button
                       onClick={handleCopyClabe}
                       className="p-1 hover:bg-stone-100 rounded transition-colors text-retro-terracota/60"
@@ -83,9 +99,9 @@ export default function RequirePaymentGate({ children }) {
                   </div>
                 </div>
                 <div className="flex justify-between pt-1">
-                  <span className="text-retro-terracota/60">Monto del Plan ({user.plan === 'basic' ? 'Básico' : user.plan === 'pro' ? 'Pro' : 'Normal'}):</span>
+                  <span className="text-retro-terracota/60">Monto del Plan ({planDetails.name}):</span>
                   <span className="text-retro-terracota font-black text-sm">
-                    {user.plan === 'basic' ? '$29.00' : '$99.00'} MXN
+                    {planDetails.price}
                   </span>
                 </div>
               </div>
@@ -95,11 +111,11 @@ export default function RequirePaymentGate({ children }) {
             <div className="p-5 bg-retro-crema/10 border border-dashed border-retro-terracota/20 rounded-2xl space-y-2">
               <h5 className="text-[10px] font-black text-retro-terracota uppercase tracking-wider">¿Cómo activar tu cuenta?</h5>
               <p className="text-[11px] font-semibold text-retro-terracota/70 leading-relaxed">
-                Una vez realizada la transferencia, envía tu comprobante por WhatsApp o al correo <a href="mailto:pagos@lunchlovers.com" className="underline font-black text-retro-terracota hover:text-retro-terracota/90">pagos@lunchlovers.com</a> especificando tu correo registrado. 
+                Una vez realizada la transferencia, envía tu comprobante por WhatsApp o al correo <a href="mailto:soporte@lunchlovers.com" className="underline font-black text-retro-terracota hover:text-retro-terracota/90">soporte@lunchlovers.com</a> especificando tu correo registrado. 
               </p>
               <div className="pt-2">
                 <a
-                  href="https://wa.me/523300000000?text=Hola,%20adjunto%20comprobante%20de%20pago%20para%20activar%20mi%20cuenta"
+                  href="https://wa.me/523322557804?text=Hola,%20adjunto%20comprobante%20de%20pago%20para%20activar%20mi%20cuenta"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center space-x-1.5 bg-retro-terracota hover:bg-retro-terracota/90 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-md shadow-retro-terracota/10"

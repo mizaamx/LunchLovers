@@ -19,6 +19,14 @@ const MealSelectionContext = createContext(null);
 export const useMealSelection = () => useContext(MealSelectionContext);
 
 export const PLAN_LIMITS = {
+  cal800_1: 5,
+  cal800_2: 10,
+  cal800_3: 15,
+  cal600_1: 5,
+  cal600_2: 10,
+  cal600_3: 15,
+  comida_diaria: 5,
+  godinez: 5,
   basic: 5,
   normal: 10,
   pro: 15,
@@ -53,10 +61,14 @@ export function getWeekId(date = new Date()) {
 
 export const getEmptySelections = (plan) => {
   const structure = {};
-  const slots = plan === 'basic' ? ['comida'] 
-              : plan === 'normal' ? ['comida', 'cena'] 
-              : plan === 'pro' ? ['comida', 'cena', 'snack', 'bebida'] 
-              : [];
+  let slots = [];
+  if (['cal800_1', 'cal600_1', 'comida_diaria', 'godinez', 'basic'].includes(plan)) {
+    slots = ['comida'];
+  } else if (['cal800_2', 'cal600_2', 'normal'].includes(plan)) {
+    slots = ['comida', 'cena'];
+  } else if (['cal800_3', 'cal600_3', 'pro'].includes(plan)) {
+    slots = ['comida', 'cena', 'snack', 'bebida'];
+  }
   const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
   days.forEach(day => {
     structure[day] = {};
@@ -90,7 +102,7 @@ export function MealSelectionProvider({ children }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [withCutlery, setWithCutlery] = useState(false);
-  const [shippingCost, setShippingCost] = useState(30);
+  const [shippingCost, setShippingCost] = useState(20);
 
   // Save simulation mode to local storage when changed
   useEffect(() => {
@@ -380,6 +392,10 @@ export function MealSelectionProvider({ children }) {
 
   const saveSelection = async () => {
     if (!user) return;
+    if (user.paymentStatus === 'pending') {
+      setError('Tu pago está pendiente de verificación por el administrador.');
+      return;
+    }
     if (!isSelectionOpen) {
       setError('El periodo de selección de menú está cerrado.');
       return;

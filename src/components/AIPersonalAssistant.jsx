@@ -150,22 +150,46 @@ export default function AIPersonalAssistant() {
               {/* Quick Suggestions Buttons */}
               <div className="px-4 py-2 border-t border-retro-terracota/5 flex items-center space-x-1.5 overflow-x-auto whitespace-nowrap scrollbar-none">
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame un menú semanal de 1800 calorías diarias')}
+                  onClick={() => handleSendMessage('¿De qué trata el Paquete Godínez y qué comidas incluye?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Plan 1800 Kcal
+                  Paquete Godínez
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cuáles de los platillos son Keto?')}
+                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de 800 Kcal diarias')}
+                  className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
+                >
+                  Plan 800 Kcal
+                </button>
+                <button
+                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de 600 Kcal diarias')}
+                  className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
+                >
+                  Plan 600 Kcal
+                </button>
+                <button
+                  onClick={() => handleSendMessage('¿Cómo funciona la opción de Comida Diaria Flexible?')}
+                  className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
+                >
+                  Comida Diaria
+                </button>
+                <button
+                  onClick={() => handleSendMessage('¿Cuál es su zona de reparto en Guadalajara y el costo de envío?')}
+                  className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
+                >
+                  Zona de Reparto
+                </button>
+                <button
+                  onClick={() => handleSendMessage('¿Cuáles de los platillos del menú son bajos en carbohidratos (Keto)?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
                   Opciones Keto
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame 5 platillos altos en proteína')}
+                  onClick={() => handleSendMessage('¿Cómo me pongo en contacto con soporte si tengo alguna duda o problema con mi pedido?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Alto en Proteína
+                  Soporte
                 </button>
               </div>
             </div>

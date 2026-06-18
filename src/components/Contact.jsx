@@ -84,21 +84,11 @@ export default function Contact() {
             <div className="space-y-6 pt-4">
               <div className="flex items-start space-x-4">
                 <div className="w-11 h-11 rounded-xl bg-retro-crema border border-retro-terracota/10 flex items-center justify-center text-retro-terracota flex-shrink-0 shadow-md">
-                  <MapPin className="w-5 h-5 stroke-[2]" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-retro-terracota">Ubicación principal</h4>
-                  <p className="text-retro-terracota/70 text-xs font-bold mt-1">Av. Chapultepec Norte #450, Col. Americana, Guadalajara, Jal.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-11 h-11 rounded-xl bg-retro-crema border border-retro-terracota/10 flex items-center justify-center text-retro-terracota flex-shrink-0 shadow-md">
                   <Phone className="w-5 h-5 stroke-[2]" />
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-retro-terracota">Teléfono / WhatsApp de atención</h4>
-                  <p className="text-retro-terracota/70 text-xs font-bold mt-1">+52 (33) 4567-8910</p>
+                  <p className="text-retro-terracota/70 text-xs font-bold mt-1">+52 (33) 2255-7804</p>
                 </div>
               </div>
 
@@ -108,7 +98,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-retro-terracota">Correo de soporte</h4>
-                  <p className="text-retro-terracota/70 text-xs font-bold mt-1">contacto@lunchloversgdl.com</p>
+                  <p className="text-retro-terracota/70 text-xs font-bold mt-1">soporte@lunchlovers.com</p>
                 </div>
               </div>
             </div>

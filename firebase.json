@@ -12,7 +12,11 @@
         "oAuthBrandDisplayName": "Lunch Lovers GDL",
         "supportEmail": "admin@lunchlovers.com",
         "authorizedRedirectUris": [
-          "https://lunchloversgdl-72e51.web.app"
+          "https://lunchloversgdl-72e51.web.app",
+          "https://lunchlovers.com",
+          "https://www.lunchlovers.com",
+          "https://lunchloversgdl.com",
+          "https://www.lunchloversgdl.com"
         ]
       }
     }
@@ -70,6 +74,10 @@
       {
         "source": "/api/chat",
         "function": "chatConGemini"
+      },
+      {
+        "source": "/api/crearNuevoAdmin",
+        "function": "crearNuevoAdmin"
       },
       {
         "source": "**",

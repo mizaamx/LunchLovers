@@ -92,7 +92,7 @@ Genera una lista con 3 o 4 sugerencias de preparación o ingredientes adicionale
 La respuesta DEBE ser una lista HTML simple (etiqueta <ul> conteniendo elementos <li>). No incluyes explicaciones adicionales antes o después, solo el marcado HTML. No uses emojis.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt
       });
 
@@ -374,8 +374,25 @@ exports.chatConGemini = onRequest({ cors: true }, async (req, res) => {
 
     const SYSTEM_INSTRUCTION = `
 Eres un Asistente Personal de Nutrición experto de 'Lunch Lovers GDL'.
-Tu objetivo es ayudar al usuario a armar su menú semanal recomendándole combinaciones de nuestros platillos según sus metas calóricas diarias o semanales.
+Tu objetivo es ayudar al usuario a armar su menú semanal recomendándole combinaciones de nuestros platillos según sus metas calóricas diarias o semanales, y responder dudas sobre nuestros planes y servicio.
 Sé siempre sumamente amable, profesional, conciso y estructurado en tus respuestas. Usa viñetas cortas.
+
+Nuestros planes y suscripciones actuales son:
+- **Plan 800 calorías** (ideal para metas calóricas de 800 kcal por comida):
+  - 1 comida al día (5 comidas/sem): $800 MXN / sem
+  - 2 comidas al día (10 comidas/sem): $1,350 MXN / sem
+  - 3 comidas al día (15 comidas/sem): $1,800 MXN / sem
+- **Plan 600 calorías** (ideal para metas calóricas de 600 kcal por comida):
+  - 1 comida al día (5 comidas/sem): $650 MXN / sem
+  - 2 comidas al día (10 comidas/sem): $1,250 MXN / sem
+  - 3 comidas al día (15 comidas/sem): $1,700 MXN / sem
+- **Paquete Godínez**: $750 MXN / sem (incluye 5 almuerzos, de lunes a viernes).
+- **Comida Diaria**: $125 MXN por comida (flexible, para pedir de forma individual).
+
+Información del Servicio:
+- **Zona de reparto**: Únicamente dentro del municipio de Guadalajara (somos una Dark Kitchen).
+- **Costo de envío**: $20 MXN fijo por entrega.
+- **Contacto y Soporte**: Correo electrónico soporte@lunchlovers.com o WhatsApp al +523322557804.
 
 Nuestro catálogo real de platillos es:
 1. Amanida de Saumon avec Avocat (Keto / Proteína) - 420 Kcal | 38g Proteína | 24g Grasa | 8g Carb.
@@ -396,7 +413,7 @@ Importante: No inventes platillos fuera de este catálogo. Responde en español.
     }));
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: contents,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION
@@ -408,6 +425,81 @@ Importante: No inventes platillos fuera de este catálogo. Responde en español.
   } catch (error) {
     console.error("Error en chatConGemini:", error);
     res.status(500).json({ error: error.message || "Error al conectar con la IA." });
+  }
+});
+
+// Endpoint HTTPS para crear un nuevo administrador (solo accesible por administradores)
+exports.crearNuevoAdmin = onRequest({ cors: true }, async (req, res) => {
+  // Solo permitir solicitudes POST
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  // Verificar autenticación
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ error: "No autorizado. Token no proporcionado." });
+    return;
+  }
+
+  const token = authHeader.split("Bearer ")[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    // Verificar que el solicitante sea admin
+    if (!decodedToken.admin) {
+      res.status(403).json({ error: "Prohibido. No tienes permisos de administrador." });
+      return;
+    }
+
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      res.status(400).json({ error: "Faltan campos obligatorios (name, email, password)." });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
+      return;
+    }
+
+    // 1. Crear el usuario en Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: password,
+      displayName: name,
+      emailVerified: true
+    });
+
+    // 2. Establecer custom claims de admin
+    await admin.auth().setCustomUserClaims(userRecord.uid, { admin: true });
+
+    // 3. Crear el documento del usuario en Firestore
+    await admin.firestore().collection("users").doc(userRecord.uid).set({
+      name: name,
+      email: email,
+      plan: "pro", // Plan admin por defecto
+      role: "admin",
+      isAdmin: true,
+      paymentStatus: "paid",
+      createdAt: new Date().toISOString().split('T')[0],
+      address: {
+        street: '',
+        colony: '',
+        municipality: 'Guadalajara',
+        zipCode: '',
+        instructions: ''
+      },
+      selectedMeals: [],
+      orderHistory: []
+    });
+
+    console.log(`Nuevo administrador creado: ${email} (UID: ${userRecord.uid})`);
+    res.status(200).json({ success: true, uid: userRecord.uid });
+
+  } catch (error) {
+    console.error("Error en crearNuevoAdmin:", error);
+    res.status(500).json({ error: error.message || "Error al crear el administrador." });
   }
 });
 

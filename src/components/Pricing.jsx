@@ -7,17 +7,10 @@ import { db } from '../firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
 import AuthModal from './AuthModal';
 
-// Links de Mercado Pago para Suscripciones / Pagos
-const linksMercadoPago = {
-  basic: "https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=YOUR_PREFERENCE_ID_BASIC",
-  normal: "https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=YOUR_PREFERENCE_ID_NORMAL",
-  pro: "https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=YOUR_PREFERENCE_ID_PRO",
-};
-
 export default function Pricing() {
-  const { user, resendVerificationEmail } = useAuth();
+  const { user, resendVerificationEmail, updateProfile } = useAuth();
   const { selectedMealIds } = useMealSelection();
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [billingCycle, setBillingCycle] = useState('weekly'); // Default to weekly as requested
   const [redirectingPlan, setRedirectingPlan] = useState(null);
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -30,64 +23,149 @@ export default function Pricing() {
   const [verificationError, setVerificationError] = useState(null);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
 
-  const plans = [
-    {
-      id: 'basic',
-      name: 'Plan Básico',
-      subtitle: 'Ideal para probar y empezar a comer sano.',
-      weeklyPrice: 9,
-      monthlyPrice: 29, // $29/mo exact text
-      features: [
-        '5 platillos semanales (Lun a Vie)',
-        'Menú rotativo balanceado',
-        'Empaques compostables',
-        'Entrega diaria en tu puerta',
-        'Asesoría digital básica',
-      ],
-      icon: Award,
-      isPopular: false,
-      styles: 'glass-card hover:border-retro-terracota/30',
-      buttonClass: 'bg-retro-crema hover:bg-white text-retro-terracota border border-retro-terracota/20 hover:border-retro-terracota',
-    },
-    {
-      id: 'normal',
-      name: 'Plan Normal',
-      subtitle: 'Comidas de Lunes a Viernes. El más equilibrado.',
-      weeklyPrice: 29,
-      monthlyPrice: 99, // $99/mo exact text
-      features: [
-        '10 platillos semanales (Comida + Cena)',
-        'Menú personalizado según tus metas',
-        'Entrega express preferente',
-        'Consulta de valoración con nutriólogo',
-        'Sin costos de envío',
-        'Modificaciones al menú sin costo',
-      ],
-      icon: Flame,
-      isPopular: true,
-      styles: 'glass-card-active scale-105 border-2 border-retro-terracota',
-      buttonClass: 'bg-retro-terracota hover:bg-retro-terracota/90 text-white shadow-lg shadow-retro-terracota/10',
-    },
-    {
-      id: 'pro',
-      name: 'Plan Pro',
-      subtitle: 'Enfoque deportivo, alto en proteínas y snacks.',
-      weeklyPrice: 29,
-      monthlyPrice: 99, // $99/mo exact text
-      features: [
-        '10 platillos deportivos (alto en proteínas)',
-        '5 snacks saludables semanales',
-        'Ajuste exacto de macronutrientes',
-        'Asesoría personalizada 24/7',
-        'Entregas express prioritarias',
-        'Ingredientes premium seleccionados',
-      ],
-      icon: Dumbbell,
-      isPopular: false,
-      styles: 'glass-card hover:border-retro-terracota/30',
-      buttonClass: 'bg-retro-crema hover:bg-white text-retro-terracota border border-retro-terracota/20 hover:border-retro-terracota',
-    },
-  ];
+  // State variables for interactive Calorie Plan
+  const [calorieTier, setCalorieTier] = useState('800'); // '800' or '600'
+  const [mealsPerDay, setMealsPerDay] = useState(1); // 1, 2, or 3
+
+  const getCaloriePlanDetails = () => {
+    if (calorieTier === '800') {
+      if (mealsPerDay === 1) {
+        return {
+          id: 'cal800_1',
+          name: 'Plan 800 Kcal (1 Comida)',
+          price: 800,
+          mealsCount: 5,
+          features: [
+            '5 comidas de 800 Kcal semanales (Lun a Vie)',
+            'Menú rotativo balanceado',
+            'Empaques compostables biodegradables',
+            'Entrega diaria directa en Guadalajara',
+            'Asesoría digital básica',
+          ]
+        };
+      } else if (mealsPerDay === 2) {
+        return {
+          id: 'cal800_2',
+          name: 'Plan 800 Kcal (2 Comidas)',
+          price: 1350,
+          mealsCount: 10,
+          features: [
+            '10 comidas de 800 Kcal semanales (Almuerzo + Cena, Lun a Vie)',
+            'Menú personalizado según tus metas',
+            'Entrega express preferente',
+            'Consulta de valoración con nutriólogo',
+            'Costo de envío: $20 MXN',
+            'Modificaciones al menú sin costo',
+          ]
+        };
+      } else {
+        return {
+          id: 'cal800_3',
+          name: 'Plan 800 Kcal (3 Comidas)',
+          price: 1800,
+          mealsCount: 15,
+          features: [
+            '15 comidas de 800 Kcal semanales (Almuerzo + Cena + Snack, Lun a Vie)',
+            'Ajuste exacto de macronutrientes',
+            'Asesoría personalizada 24/7',
+            'Entregas express prioritarias',
+            'Ingredientes premium seleccionados',
+            'Costo de envío: $20 MXN',
+          ]
+        };
+      }
+    } else {
+      // 600 Kcal
+      if (mealsPerDay === 1) {
+        return {
+          id: 'cal600_1',
+          name: 'Plan 600 Kcal (1 Comida)',
+          price: 650,
+          mealsCount: 5,
+          features: [
+            '5 comidas de 600 Kcal semanales (Lun a Vie)',
+            'Menú rotativo balanceado y ligero',
+            'Empaques compostables biodegradables',
+            'Entrega diaria directa en Guadalajara',
+            'Asesoría digital básica',
+          ]
+        };
+      } else if (mealsPerDay === 2) {
+        return {
+          id: 'cal600_2',
+          name: 'Plan 600 Kcal (2 Comidas)',
+          price: 1250,
+          mealsCount: 10,
+          features: [
+            '10 comidas de 600 Kcal semanales (Almuerzo + Cena, Lun a Vie)',
+            'Menú personalizado para déficit calórico',
+            'Entrega express preferente',
+            'Consulta de valoración con nutriólogo',
+            'Costo de envío: $20 MXN',
+            'Modificaciones al menú sin costo',
+          ]
+        };
+      } else {
+        return {
+          id: 'cal600_3',
+          name: 'Plan 600 Kcal (3 Comidas)',
+          price: 1700,
+          mealsCount: 15,
+          features: [
+            '15 comidas de 600 Kcal semanales (Almuerzo + Cena + Snack, Lun a Vie)',
+            'Control de macronutrientes estricto',
+            'Asesoría personalizada con nutriólogo 24/7',
+            'Entregas express prioritarias',
+            'Ingredientes premium seleccionados',
+            'Costo de envío: $20 MXN',
+          ]
+        };
+      }
+    }
+  };
+
+  const activeCaloriePlan = getCaloriePlanDetails();
+
+  const planGodinez = {
+    id: 'godinez',
+    name: 'Paquete Godínez',
+    subtitle: 'El plan ideal para tu horario de oficina.',
+    price: 750,
+    features: [
+      '5 comidas semanales (1 comida diaria de Lun a Vie)',
+      'Porciones ideales para la jornada laboral',
+      'Entrega diaria en tu oficina en Guadalajara',
+      'Olvídate de cocinar durante la semana',
+      'Platillos listos para calentar y disfrutar',
+    ],
+  };
+
+  const planComidaDiaria = {
+    id: 'comida_diaria',
+    name: 'Comida Diaria (Flexible)',
+    subtitle: 'Toma el control día a día con total libertad.',
+    price: 125,
+    features: [
+      '$125.00 MXN por comida individual',
+      'Pide los días y porciones que necesites',
+      'Sin suscripciones fijas ni plazos forzosos',
+      'Complementa tu semana de forma fácil',
+      'Entrega diaria en Guadalajara',
+    ],
+  };
+
+  const getPrice = (weeklyPrice, isSingleMeal = false) => {
+    if (billingCycle === 'weekly') {
+      return weeklyPrice;
+    } else {
+      // Monthly subscription = weeklyPrice * 4 with a 10% discount
+      if (isSingleMeal) {
+        // For individual meal, assume a pack of 20 meals for the month
+        return Math.round(weeklyPrice * 20 * 0.9);
+      }
+      return Math.round(weeklyPrice * 4 * 0.9);
+    }
+  };
 
   const handleCheckout = async (planId, planName) => {
     if (!user) {
@@ -129,22 +207,20 @@ export default function Pricing() {
       // Guardar el documento del pedido
       await addDoc(collection(db, 'orders'), orderData);
 
-      // 2. Redirección: Inmediatamente después de que Firestore confirme que se guardó el documento (usando await)
+      // Actualizar el perfil del usuario con el plan y estatus pendiente
+      await updateProfile({ plan: planId, paymentStatus: 'pending' });
+
+      // 2. Transición visual para redirección a datos de transferencia
       setCheckoutStep('redirecting');
 
-      const url = linksMercadoPago[planId];
-      
-      // Delay visual de cortesía (1.2s) para mostrar el cambio de estado y realizar la redirección
+      // Delay de cortesía de 1.5s
       setTimeout(() => {
-        if (url.includes("YOUR_PREFERENCE_ID")) {
-          window.location.href = `${window.location.origin}/?payment=success&plan=${planId}#dashboard`;
-        } else {
-          window.location.assign(url);
-        }
-      }, 1200);
+        window.location.href = `${window.location.origin}/#dashboard`;
+        window.location.reload();
+      }, 1500);
 
     } catch (err) {
-      console.error("Error al registrar el pedido o redirigir:", err);
+      console.error("Error al registrar el pedido:", err);
       setCheckoutStep('error');
       setError(err.message || 'No pudimos registrar tu pedido. Por favor, intenta de nuevo.');
     }
@@ -173,10 +249,6 @@ export default function Pricing() {
       }
     }
   };
-
-  const planBasic = plans.find(p => p.id === 'basic');
-  const planNormal = plans.find(p => p.id === 'normal');
-  const planPro = plans.find(p => p.id === 'pro');
 
   return (
     <section id="pricing" className="py-24 bg-white relative overflow-hidden">
@@ -235,10 +307,10 @@ export default function Pricing() {
           variants={containerVariants}
           className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-4 max-w-6xl mx-auto text-left"
         >
-          {/* 1. HERO PLAN: Plan Normal (Left Side, 7 columns) */}
+          {/* 1. HERO CARD: Plan Calórico Premium (Left Side, 7 columns) */}
           <motion.div
             variants={cardVariants}
-            whileHover={{ y: -6, rotateX: 1.2, rotateY: -1.2, transition: { duration: 0.2 } }}
+            whileHover={{ y: -6, rotateX: 1.0, rotateY: -1.0, transition: { duration: 0.2 } }}
             className="lg:col-span-7 flex flex-col rounded-[2.5rem] p-8 lg:p-10 relative liquid-glass-active depth-container shadow-[0_20px_50px_rgba(176,90,50,0.12)]"
           >
             {/* Background dynamic blur spot */}
@@ -247,7 +319,7 @@ export default function Pricing() {
             {/* Popular Tag */}
             <div className="absolute top-0 right-8 transform -translate-y-1/2">
               <span className="text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md text-white bg-retro-mostaza border border-retro-mostaza">
-                Más Popular
+                Plan Calórico
               </span>
             </div>
 
@@ -259,18 +331,65 @@ export default function Pricing() {
                     <Flame className="w-6 h-6 stroke-[2.2]" />
                   </div>
                   <h3 className="text-2xl font-black text-retro-terracota font-sans tracking-tight">
-                    {planNormal.name}
+                    Plan Calórico Premium
                   </h3>
-                  <p className="text-retro-terracota/80 text-xs font-bold mt-3 leading-relaxed">
-                    {planNormal.subtitle}
+                  <p className="text-retro-terracota/80 text-xs font-bold mt-2 leading-relaxed">
+                    Personaliza la carga calórica y la cantidad de comidas que necesitas cada día de Lunes a Viernes.
                   </p>
+
+                  {/* Calorie Tier Tabs */}
+                  <div className="mt-5">
+                    <span className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-wider block mb-2 font-sans">1. Selecciona Calorías</span>
+                    <div className="flex rounded-xl bg-retro-crema/60 p-1 border border-retro-terracota/10 w-fit">
+                      <button
+                        onClick={() => setCalorieTier('800')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+                          calorieTier === '800' 
+                            ? 'bg-retro-terracota text-white shadow-sm' 
+                            : 'text-retro-terracota/70 hover:text-retro-terracota'
+                        }`}
+                      >
+                        800 kcal
+                      </button>
+                      <button
+                        onClick={() => setCalorieTier('600')}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+                          calorieTier === '600' 
+                            ? 'bg-retro-terracota text-white shadow-sm' 
+                            : 'text-retro-terracota/70 hover:text-retro-terracota'
+                        }`}
+                      >
+                        600 kcal
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Meals Per Day Tabs */}
+                  <div className="mt-5">
+                    <span className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-wider block mb-2 font-sans">2. Comidas diarias (Lunes a Viernes)</span>
+                    <div className="flex rounded-xl bg-retro-crema/60 p-1 border border-retro-terracota/10">
+                      {[1, 2, 3].map((num) => (
+                        <button
+                          key={num}
+                          onClick={() => setMealsPerDay(num)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            mealsPerDay === num
+                              ? 'bg-retro-terracota text-white shadow-sm'
+                              : 'text-retro-terracota/70 hover:text-retro-terracota'
+                          }`}
+                        >
+                          {num} {num === 1 ? 'Comida' : 'Comidas'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-retro-terracota/10">
                   <div className="flex items-baseline justify-start">
                     <span className="text-retro-terracota/60 text-lg font-bold">$</span>
                     <span className="text-5xl font-black text-retro-terracota tracking-tight font-sans">
-                      {billingCycle === 'weekly' ? planNormal.weeklyPrice : planNormal.monthlyPrice}
+                      {getPrice(activeCaloriePlan.price)}
                     </span>
                     <span className="text-retro-terracota/60 text-xs font-extrabold ml-2">
                       MXN / {billingCycle === 'weekly' ? 'semana' : 'mes'}
@@ -281,12 +400,12 @@ export default function Pricing() {
                     <motion.button
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => handleCheckout(planNormal.id, planNormal.name)}
+                      onClick={() => handleCheckout(activeCaloriePlan.id, activeCaloriePlan.name)}
                       className="w-full py-4 px-6 rounded-2xl font-black text-xs tracking-wider uppercase transition-all bg-retro-terracota hover:bg-retro-terracota/90 text-white shadow-lg shadow-retro-terracota/15 border border-retro-terracota/20"
                     >
                       Suscribirme
                     </motion.button>
-                    <p className="text-[10px] text-center font-bold text-retro-terracota/50 mt-2.5">
+                    <p className="text-[10px] text-center font-bold text-retro-terracota/50 mt-2.5 font-sans">
                       🔒 Pago 100% seguro a través de Mercado Pago
                     </p>
                   </div>
@@ -295,11 +414,11 @@ export default function Pricing() {
 
               {/* Right Column of Hero Plan (Features list) */}
               <div className="flex-1 flex flex-col justify-center bg-white/40 backdrop-blur-sm rounded-3xl p-6 border border-retro-terracota/5 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)]">
-                <h4 className="text-xs font-black uppercase tracking-wider text-retro-terracota/60 mb-4">
-                  ¿Qué incluye este plan?
+                <h4 className="text-xs font-black uppercase tracking-wider text-retro-terracota/60 mb-4 font-sans">
+                  {activeCaloriePlan.name}
                 </h4>
                 <ul className="space-y-4 flex-grow">
-                  {planNormal.features.map((feature, idx) => (
+                  {activeCaloriePlan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start text-xs font-bold text-retro-terracota/90">
                       <span className="w-5 h-5 rounded-full bg-retro-terracota/10 text-retro-terracota flex items-center justify-center mr-3 flex-shrink-0">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -312,14 +431,14 @@ export default function Pricing() {
             </div>
           </motion.div>
 
-          {/* 2. SECONDARY PLANS: Basic & Pro (Right Side, 5 columns) */}
+          {/* 2. SECONDARY PLANS: Godínez & Comida Diaria (Right Side, 5 columns) */}
           <div className="lg:col-span-5 flex flex-col gap-6">
             
-            {/* Plan Básico */}
+            {/* Paquete Godínez */}
             <motion.div
               variants={cardVariants}
               whileHover={{ y: -4, rotateX: 0.8, rotateY: -0.8, transition: { duration: 0.2 } }}
-              className="rounded-[2rem] p-6 relative liquid-glass depth-container shadow-[0_15px_30px_rgba(176,90,50,0.04)] overflow-hidden"
+              className="rounded-[2rem] p-6 relative liquid-glass depth-container shadow-[0_15px_30px_rgba(176,90,50,0.04)] overflow-hidden text-left"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-3.5">
@@ -328,10 +447,10 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-retro-terracota font-sans">
-                      {planBasic.name}
+                      {planGodinez.name}
                     </h3>
-                    <p className="text-[11px] font-bold text-retro-terracota/60">
-                      Ideal para probar
+                    <p className="text-[11px] font-bold text-retro-terracota/60 leading-snug">
+                      {planGodinez.subtitle}
                     </p>
                   </div>
                 </div>
@@ -339,7 +458,7 @@ export default function Pricing() {
                 <div className="flex items-baseline">
                   <span className="text-retro-terracota/60 text-xs font-bold">$</span>
                   <span className="text-3xl font-black text-retro-terracota font-sans">
-                    {billingCycle === 'weekly' ? planBasic.weeklyPrice : planBasic.monthlyPrice}
+                    {getPrice(planGodinez.price)}
                   </span>
                   <span className="text-retro-terracota/60 text-[10px] font-extrabold ml-1">
                     MXN/{billingCycle === 'weekly' ? 'sem' : 'mes'}
@@ -349,7 +468,7 @@ export default function Pricing() {
 
               <div className="mt-4 pt-4 border-t border-retro-terracota/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ul className="space-y-2">
-                  {planBasic.features.slice(0, 3).map((feature, idx) => (
+                  {planGodinez.features.slice(0, 3).map((feature, idx) => (
                     <li key={idx} className="flex items-center text-[10px] font-bold text-retro-terracota/85">
                       <Check className="w-3 h-3 stroke-[3] text-retro-terracota mr-2 flex-shrink-0" />
                       <span className="truncate">{feature}</span>
@@ -357,7 +476,7 @@ export default function Pricing() {
                   ))}
                 </ul>
                 <ul className="space-y-2">
-                  {planBasic.features.slice(3).map((feature, idx) => (
+                  {planGodinez.features.slice(3).map((feature, idx) => (
                     <li key={idx} className="flex items-center text-[10px] font-bold text-retro-terracota/85">
                       <Check className="w-3 h-3 stroke-[3] text-retro-terracota mr-2 flex-shrink-0" />
                       <span className="truncate">{feature}</span>
@@ -370,7 +489,7 @@ export default function Pricing() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCheckout(planBasic.id, planBasic.name)}
+                  onClick={() => handleCheckout(planGodinez.id, planGodinez.name)}
                   className="w-full py-3 px-5 rounded-xl font-black text-[11px] tracking-wider uppercase bg-retro-crema hover:bg-white text-retro-terracota border border-retro-terracota/15 hover:border-retro-terracota transition-all"
                 >
                   Suscribirme
@@ -378,11 +497,11 @@ export default function Pricing() {
               </div>
             </motion.div>
 
-            {/* Plan Pro */}
+            {/* Comida Diaria / Flexible */}
             <motion.div
               variants={cardVariants}
               whileHover={{ y: -4, rotateX: 0.8, rotateY: -0.8, transition: { duration: 0.2 } }}
-              className="rounded-[2rem] p-6 relative liquid-glass depth-container shadow-[0_15px_30px_rgba(176,90,50,0.04)] overflow-hidden"
+              className="rounded-[2rem] p-6 relative liquid-glass depth-container shadow-[0_15px_30px_rgba(176,90,50,0.04)] overflow-hidden text-left"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-3.5">
@@ -391,10 +510,10 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-retro-terracota font-sans">
-                      {planPro.name}
+                      {planComidaDiaria.name}
                     </h3>
-                    <p className="text-[11px] font-bold text-retro-terracota/60">
-                      Enfoque deportivo
+                    <p className="text-[11px] font-bold text-retro-terracota/60 leading-snug">
+                      {planComidaDiaria.subtitle}
                     </p>
                   </div>
                 </div>
@@ -402,17 +521,17 @@ export default function Pricing() {
                 <div className="flex items-baseline">
                   <span className="text-retro-terracota/60 text-xs font-bold">$</span>
                   <span className="text-3xl font-black text-retro-terracota font-sans">
-                    {billingCycle === 'weekly' ? planPro.weeklyPrice : planPro.monthlyPrice}
+                    {getPrice(planComidaDiaria.price, true)}
                   </span>
                   <span className="text-retro-terracota/60 text-[10px] font-extrabold ml-1">
-                    MXN/{billingCycle === 'weekly' ? 'sem' : 'mes'}
+                    MXN/{billingCycle === 'weekly' ? 'comida' : 'mes'}
                   </span>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-retro-terracota/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ul className="space-y-2">
-                  {planPro.features.slice(0, 3).map((feature, idx) => (
+                  {planComidaDiaria.features.slice(0, 3).map((feature, idx) => (
                     <li key={idx} className="flex items-center text-[10px] font-bold text-retro-terracota/85">
                       <Check className="w-3 h-3 stroke-[3] text-retro-terracota mr-2 flex-shrink-0" />
                       <span className="truncate">{feature}</span>
@@ -420,7 +539,7 @@ export default function Pricing() {
                   ))}
                 </ul>
                 <ul className="space-y-2">
-                  {planPro.features.slice(3).map((feature, idx) => (
+                  {planComidaDiaria.features.slice(3).map((feature, idx) => (
                     <li key={idx} className="flex items-center text-[10px] font-bold text-retro-terracota/85">
                       <Check className="w-3 h-3 stroke-[3] text-retro-terracota mr-2 flex-shrink-0" />
                       <span className="truncate">{feature}</span>
@@ -433,7 +552,7 @@ export default function Pricing() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCheckout(planPro.id, planPro.name)}
+                  onClick={() => handleCheckout(planComidaDiaria.id, planComidaDiaria.name)}
                   className="w-full py-3 px-5 rounded-xl font-black text-[11px] tracking-wider uppercase bg-retro-crema hover:bg-white text-retro-terracota border border-retro-terracota/15 hover:border-retro-terracota transition-all"
                 >
                   Suscribirme
@@ -495,14 +614,14 @@ export default function Pricing() {
                     <div className="relative w-16 h-16 mx-auto mb-6 flex items-center justify-center">
                       <div className="absolute inset-0 border-4 border-retro-crema border-t-retro-terracota rounded-full animate-spin" />
                       <div className="w-10 h-10 bg-retro-crema text-retro-terracota rounded-full flex items-center justify-center font-black text-sm border border-retro-terracota/10">
-                        MP
+                        <ShieldCheck className="w-6 h-6 stroke-[2.2] text-retro-terracota" />
                       </div>
                     </div>
                     <h3 className="text-lg font-black text-retro-terracota font-sans">
-                      Redirigiendo a Mercado Pago
+                      ¡Plan Registrado con Éxito!
                     </h3>
                     <p className="text-retro-terracota/70 text-xs font-bold mt-3 leading-relaxed">
-                      ¡Pedido guardado! Redirigiendo a la pasarela segura para pagar el <span className="text-retro-terracota font-black">{redirectingPlan.name}</span>.
+                      Redirigiendo a los datos de transferencia bancaria para activar tu suscripción de <span className="text-retro-terracota font-black">{redirectingPlan.name}</span>.
                     </p>
                   </>
                 )}
@@ -530,10 +649,10 @@ export default function Pricing() {
                 {checkoutStep !== 'error' && (
                   <div className="mt-6 p-4 bg-retro-crema/40 rounded-2xl border border-retro-terracota/10 text-left">
                     <p className="text-[10px] font-black uppercase tracking-wider text-retro-terracota/60">
-                      Pasarela de Pago Segura
+                      Instrucciones de Pago
                     </p>
                     <p className="text-[11px] font-bold text-retro-terracota mt-1 leading-snug">
-                      Podrás pagar de forma rápida y confiable usando tarjeta de débito/crédito, transferencia SPEI o efectivo en tiendas de conveniencia.
+                      Podrás pagar mediante transferencia interbancaria (SPEI). Al completar este registro, se te mostrarán los datos de la cuenta Santander de Susana Ruiz Cazares para realizar tu depósito.
                     </p>
                   </div>
                 )}

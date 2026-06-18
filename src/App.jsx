@@ -9,6 +9,7 @@ import Pricing from './components/Pricing';
 import Testimonials from './components/Testimonials';
 import Contact from './components/Contact';
 import WhatsAppButton from './components/WhatsAppButton';
+import RequirePaymentGate from './components/RequirePaymentGate';
 
 // Helper to handle ChunkLoadError when a new version is deployed and the user's browser attempts to fetch outdated assets
 const lazyWithRetry = (importFn) => {
@@ -145,10 +146,12 @@ function AppContent() {
             </>
           ) : currentPage === 'dashboard' ? (
             /* Private client portal (full width page) */
-            <Dashboard 
-              setCurrentPage={setCurrentPage} 
-              setActiveSection={setActiveSection} 
-            />
+            <RequirePaymentGate>
+              <Dashboard 
+                setCurrentPage={setCurrentPage} 
+                setActiveSection={setActiveSection} 
+              />
+            </RequirePaymentGate>
           ) : (
             /* Protected administrator portal */
             user && user.isAdmin ? (

@@ -5,11 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMealSelection } from '../context/MealSelectionContext';
 
 const municipalities = [
-  'Guadalajara',
-  'Zapopan',
-  'San Pedro Tlaquepaque',
-  'Tonalá',
-  'Tlajomulco de Zúñiga'
+  'Guadalajara'
 ];
 
 const mockCatalog = [
@@ -24,6 +20,25 @@ const mockCatalog = [
 export default function Dashboard({ setCurrentPage, setActiveSection }) {
   const { user, updateProfile, resendVerificationEmail } = useAuth();
   const { selectedDays, selectedMealIds, allDishes } = useMealSelection();
+  
+  const getPlanDetails = (planId) => {
+    const plansInfo = {
+      cal800_1: { name: 'Plan 800 Kcal (1 Comida)', price: '$800 MXN / sem' },
+      cal800_2: { name: 'Plan 800 Kcal (2 Comidas)', price: '$1,350 MXN / sem' },
+      cal800_3: { name: 'Plan 800 Kcal (3 Comidas)', price: '$1,800 MXN / sem' },
+      cal600_1: { name: 'Plan 600 Kcal (1 Comida)', price: '$650 MXN / sem' },
+      cal600_2: { name: 'Plan 600 Kcal (2 Comidas)', price: '$1,250 MXN / sem' },
+      cal600_3: { name: 'Plan 600 Kcal (3 Comidas)', price: '$1,700 MXN / sem' },
+      godinez: { name: 'Paquete Godínez', price: '$750 MXN / sem' },
+      comida_diaria: { name: 'Comida Diaria (Flexible)', price: '$125 MXN / comida' },
+      basic: { name: 'Plan Básico', price: '$29 MXN / mes' },
+      normal: { name: 'Plan Normal', price: '$99 MXN / mes' },
+      pro: { name: 'Plan Pro', price: '$99 MXN / mes' }
+    };
+    return plansInfo[planId] || { name: 'Ninguno', price: '$0 MXN' };
+  };
+
+  const currentPlanInfo = getPlanDetails(user?.plan);
   
   // Verification states
   const [resendingVerification, setResendingVerification] = useState(false);
@@ -88,16 +103,9 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
     setSaveSuccess(false);
     setSaveError(null);
 
-    const allowed = ['Guadalajara', 'Zapopan', 'San Pedro Tlaquepaque', 'Tonalá', 'Tlajomulco de Zúñiga'];
+    const allowed = ['Guadalajara'];
     if (!allowed.includes(municipality)) {
       setSaveError('Lo sentimos, por el momento no realizamos entregas en el municipio seleccionado.');
-      setIsSaving(false);
-      return;
-    }
-
-    const needsVerification = ['Tonalá', 'Tlajomulco de Zúñiga'].includes(municipality);
-    if (needsVerification && !hasClickedCoverageCheck) {
-      setSaveError('Por favor, primero consulta la zona de cobertura vía WhatsApp usando el botón de abajo.');
       setIsSaving(false);
       return;
     }
@@ -216,15 +224,15 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
 
               <div className="p-4 bg-retro-crema/40 rounded-2xl border border-retro-terracota/10 mb-6 grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-[9px] font-black text-retro-terracota/60 uppercase tracking-wider block">Suscripción</span>
+                  <span className="text-[9px] font-black text-retro-terracota/60 uppercase tracking-wider block font-sans">Suscripción</span>
                   <span className="text-sm font-black text-retro-terracota">
-                    {user?.plan === 'basic' ? 'Plan Básico' : user?.plan === 'normal' ? 'Plan Normal' : user?.plan === 'pro' ? 'Plan Pro' : 'Ninguno'}
+                    {currentPlanInfo.name}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[9px] font-black text-retro-terracota/60 uppercase tracking-wider block">Costo</span>
+                  <span className="text-[9px] font-black text-retro-terracota/60 uppercase tracking-wider block font-sans">Costo</span>
                   <span className="text-sm font-black text-retro-terracota">
-                    {user?.plan === 'basic' ? '$29' : user?.plan ? '$99' : '$0'} MXN / mes
+                    {currentPlanInfo.price}
                   </span>
                 </div>
               </div>
@@ -445,26 +453,7 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                   </div>
                 </div>
 
-                {/* WhatsApp Coverage Verification */}
-                {['Tonalá', 'Tlajomulco de Zúñiga'].includes(municipality) && (
-                  <div className="p-4 bg-retro-crema/40 border-2 border-dashed border-retro-terracota/30 rounded-2xl space-y-3 mb-2 text-left">
-                    <p className="text-[11px] font-bold text-retro-terracota leading-relaxed">
-                      ⚠️ <strong>Consultar zona de cobertura:</strong> Los municipios de Tonalá y Tlajomulco de Zúñiga se encuentran más retirados de nuestra zona central. Por favor, haz clic en el botón de abajo para verificar la cobertura de tu dirección por WhatsApp antes de guardar.
-                    </p>
-                    <a
-                      href={`https://wa.me/523345678910?text=${encodeURIComponent(`Hola, me gustaría verificar si tienen cobertura de entrega en la siguiente dirección: Calle: ${street}, Colonia: ${colony}, Municipio: ${municipality}, CP: ${zipCode}.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setHasClickedCoverageCheck(true)}
-                      className="inline-flex items-center justify-center w-full py-2.5 px-4 bg-[#25D366] hover:bg-[#20ba5a] text-white font-black text-xs rounded-xl shadow-md transition-all space-x-2"
-                    >
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.459h.008c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413"/>
-                      </svg>
-                      <span>{hasClickedCoverageCheck ? '✓ Consulta Abierta' : 'Consultar zona de cobertura'}</span>
-                    </a>
-                  </div>
-                )}
+
 
                 <motion.button
                   whileHover={{ scale: 1.01 }}

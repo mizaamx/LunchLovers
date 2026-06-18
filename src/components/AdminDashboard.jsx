@@ -23,7 +23,7 @@ import {
   Loader2,
   Coffee
 } from 'lucide-react';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { 
   collection, 
   onSnapshot, 
@@ -92,6 +92,12 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [imageUrl, setImageUrl] = useState('/keto_salmon.webp');
   const [category, setCategory] = useState('comida'); // 'comida', 'cena', 'snack', 'bebida'
   const [isSavingDish, setIsSavingDish] = useState(false);
+
+  // States for new administrator registration
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isSavingAdmin, setIsSavingAdmin] = useState(false);
 
   // Weekly Menu configuration state
   const [selectedWeekId, setSelectedWeekId] = useState('');
@@ -177,7 +183,9 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
               plan: doc.data().plan || null,
               status: doc.data().status || 'active',
               paymentStatus: doc.data().paymentStatus || 'pending',
-              createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString().split('T')[0] : '2026-05-01',
+              createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString().split('T')[0] : (doc.data().createdAt || '2026-05-01'),
+              role: doc.data().role || 'user',
+              isAdmin: doc.data().isAdmin || false,
             }));
             setUsers(list.length > 0 ? list : mockUsers);
           }, (err) => {
@@ -542,6 +550,49 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     }
   };
 
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault();
+    setIsSavingAdmin(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Sesión de administrador no encontrada.');
+      }
+      const token = await currentUser.getIdToken(true);
+
+      const response = await fetch('/api/crearNuevoAdmin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newAdminName,
+          email: newAdminEmail,
+          password: newAdminPassword
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo crear el administrador.');
+      }
+
+      showSuccess(`¡Administrador ${newAdminEmail} registrado con éxito!`);
+      setNewAdminName('');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+    } catch (err) {
+      console.error(err);
+      showError(err.message || 'Error al registrar al administrador.');
+    } finally {
+      setIsSavingAdmin(false);
+    }
+  };
+
   const handleSubscriptionStatusChange = async (client, newStatus) => {
     try {
       if (db) {
@@ -676,6 +727,21 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
             </div>
             <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${activeTab === 'users' ? 'rotate-90' : ''}`} />
           </button>
+
+          <button
+            onClick={() => setActiveTab('admins')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 ${
+              activeTab === 'admins'
+                ? 'bg-retro-terracota text-white shadow-md shadow-retro-terracota/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Users className="w-4 h-4 text-retro-mostaza" />
+              <span>Administradores</span>
+            </div>
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${activeTab === 'admins' ? 'rotate-90' : ''}`} />
+          </button>
         </nav>
 
         {/* Sidebar Footer Actions */}
@@ -712,12 +778,14 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
               {activeTab === 'users' && 'Directorio de Clientes'}
               {activeTab === 'dishes' && 'Inventario de Platillos'}
               {activeTab === 'weeklyMenu' && 'Configuración de Menú Semanal'}
+              {activeTab === 'admins' && 'Administradores del Sistema'}
             </h2>
             <p className="text-slate-400 text-xs mt-1">
               {activeTab === 'orders' && 'Monitorea las entregas activas de la Zona Metropolitana de Guadalajara y actualiza sus estados.'}
               {activeTab === 'users' && 'Directorio completo de usuarios registrados y sus planes activos.'}
               {activeTab === 'dishes' && 'Crea, edita o elimina los platillos y especifica el desglose de macronutrientes.'}
               {activeTab === 'weeklyMenu' && 'Arma el menú de platillos disponibles para las próximas semanas de entrega.'}
+              {activeTab === 'admins' && 'Crea y gestiona las cuentas de los administradores que tienen acceso total al sistema.'}
             </p>
           </div>
           
@@ -1364,20 +1432,20 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                           <select
                             value={client.plan || ''}
                             onChange={(e) => handlePlanChange(client, e.target.value)}
-                            className={`px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer ${
-                              client.plan === 'basic' 
-                                ? 'text-retro-crema border-retro-crema/20' 
-                                : client.plan === 'normal' 
-                                ? 'text-retro-terracota border-retro-terracota/20' 
-                                : client.plan === 'pro' 
-                                ? 'text-retro-mostaza border-retro-mostaza/20' 
-                                : 'text-slate-500 border-slate-800'
-                            }`}
+                            className="px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer text-retro-crema border-retro-crema/20"
                           >
                             <option value="" className="text-slate-500">Sin Plan</option>
-                            <option value="basic" className="text-retro-crema bg-slate-900">Plan Básico</option>
-                            <option value="normal" className="text-retro-terracota bg-slate-900">Plan Normal</option>
-                            <option value="pro" className="text-retro-mostaza bg-slate-900">Plan Pro</option>
+                            <option value="cal800_1" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (1 Comida)</option>
+                            <option value="cal800_2" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (2 Comidas)</option>
+                            <option value="cal800_3" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (3 Comidas)</option>
+                            <option value="cal600_1" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (1 Comida)</option>
+                            <option value="cal600_2" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (2 Comidas)</option>
+                            <option value="cal600_3" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (3 Comidas)</option>
+                            <option value="godinez" className="text-retro-crema bg-slate-900">Paquete Godínez</option>
+                            <option value="comida_diaria" className="text-retro-crema bg-slate-900">Comida Diaria (Flexible)</option>
+                            <option value="basic" className="text-slate-500 bg-slate-900">Básico (Legacy)</option>
+                            <option value="normal" className="text-slate-500 bg-slate-900">Normal (Legacy)</option>
+                            <option value="pro" className="text-slate-500 bg-slate-900">Pro (Legacy)</option>
                           </select>
                         </td>
 
@@ -1441,6 +1509,137 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* VIEW TAB 5: ADMINISTRATORS MANAGEMENT */}
+            {activeTab === 'admins' && (
+              <div className="space-y-8">
+                {/* Admin Registration Form */}
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden">
+                  <div className="absolute top-[-40px] right-[-40px] w-36 h-36 bg-retro-terracota/5 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <h3 className="text-base font-black text-retro-crema mb-1 flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-retro-mostaza" />
+                    Registrar Nuevo Administrador
+                  </h3>
+                  <p className="text-slate-400 text-xs font-semibold mb-6">
+                    El nuevo administrador tendrá acceso total a los datos, platillos, menús y pedidos.
+                  </p>
+
+                  <form onSubmit={handleCreateAdmin} className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                        Nombre Completo
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newAdminName}
+                        onChange={(e) => setNewAdminName(e.target.value)}
+                        placeholder="Ej. Juan Pérez"
+                        className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-retro-terracota focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                        Correo Electrónico
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={newAdminEmail}
+                        onChange={(e) => setNewAdminEmail(e.target.value)}
+                        placeholder="Ej. juan.admin@lunchlovers.com"
+                        className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-retro-terracota focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                      />
+                    </div>
+                    <div className="flex gap-4 items-end">
+                      <div className="flex-grow">
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 font-sans">
+                          Contraseña (mín. 6 caracteres)
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={newAdminPassword}
+                          onChange={(e) => setNewAdminPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-retro-terracota focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSavingAdmin}
+                        className="px-6 py-3 bg-retro-terracota hover:bg-retro-terracota/90 text-white rounded-xl font-black text-xs transition-colors flex items-center space-x-1.5 h-11 flex-shrink-0 disabled:opacity-50"
+                      >
+                        {isSavingAdmin ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Guardando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>Crear Admin</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Admins List Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-800/30 text-slate-400 border-b border-slate-800 font-black uppercase text-[10px] tracking-wider">
+                        <th className="p-4 sm:p-5">Nombre</th>
+                        <th className="p-4 sm:p-5">Correo Electrónico</th>
+                        <th className="p-4 sm:p-5">Fecha de Registro</th>
+                        <th className="p-4 sm:p-5">Rol</th>
+                        <th className="p-4 sm:p-5 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-medium">
+                      {users.filter(u => u.role === 'admin' || u.isAdmin).map((adminUser) => (
+                        <tr key={adminUser.id} className="hover:bg-slate-800/20 transition-colors">
+                          <td className="p-4 sm:p-5 font-black text-slate-200">
+                            {adminUser.name}
+                          </td>
+                          <td className="p-4 sm:p-5 font-extrabold text-slate-300">
+                            {adminUser.email}
+                          </td>
+                          <td className="p-4 sm:p-5 text-slate-400">
+                            {adminUser.createdAt}
+                          </td>
+                          <td className="p-4 sm:p-5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border bg-retro-mostaza/20 text-retro-mostaza border-retro-mostaza/20">
+                              Administrador
+                            </span>
+                          </td>
+                          <td className="p-4 sm:p-5 text-right">
+                            <button
+                              onClick={() => setUserToDelete(adminUser)}
+                              className="p-2 bg-red-950/20 hover:bg-red-950 border border-red-900/40 hover:border-red-900 text-red-400 hover:text-red-200 rounded-lg transition-colors"
+                              title="Eliminar Administrador"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {users.filter(u => u.role === 'admin' || u.isAdmin).length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="py-12 text-center text-slate-500 font-bold">
+                            No hay otros administradores registrados.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

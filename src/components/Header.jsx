@@ -196,135 +196,136 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer (Native-feeling overlay with slide and spring physics) */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-sm md:hidden"
-              />
+      </header>
 
-              {/* Drawer Panel */}
-              <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', stiffness: 150, damping: 22 }}
-                className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm z-50 bg-white/90 backdrop-blur-md border-l border-white/20 shadow-2xl p-6 flex flex-col justify-between md:hidden text-left"
-              >
-                <div>
-                  {/* Close button & Logo */}
-                  <div className="flex items-center justify-between mb-8 pb-4 border-b border-retro-terracota/10">
-                    <Logo className="h-10 w-auto" />
-                    <button
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="p-2 text-retro-terracota hover:bg-retro-crema/40 rounded-xl"
+      {/* Mobile Navigation Drawer (Native-feeling overlay with slide and spring physics) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm md:hidden"
+            />
+
+            {/* Drawer Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 150, damping: 22 }}
+              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm z-50 bg-white opacity-100 border-l border-retro-terracota/10 shadow-2xl p-6 flex flex-col justify-between md:hidden text-left"
+            >
+              <div>
+                {/* Close button & Logo */}
+                <div className="flex items-center justify-between mb-8 pb-4 border-b border-retro-terracota/10">
+                  <Logo className="h-10 w-auto" />
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-2 text-retro-terracota hover:bg-retro-crema/40 rounded-xl"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Navigation Links */}
+                <nav className="space-y-3">
+                  {navItems.map((item, idx) => (
+                    <motion.button
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id, 'landing')}
+                      className={`block w-full text-left px-4 py-3 rounded-2xl text-base font-black transition-all ${
+                        currentPage === 'landing' && activeSection === item.id
+                          ? 'bg-retro-terracota text-white shadow-md shadow-retro-terracota/15'
+                          : 'text-retro-terracota hover:bg-retro-crema/40'
+                      }`}
                     >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
+                      {item.label}
+                    </motion.button>
+                  ))}
 
-                  {/* Navigation Links */}
-                  <nav className="space-y-3">
-                    {navItems.map((item, idx) => (
+                  {user && (
+                    user.isAdmin ? (
                       <motion.button
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        key={item.id}
-                        onClick={() => handleNavClick(item.id, 'landing')}
-                        className={`block w-full text-left px-4 py-3 rounded-2xl text-base font-black transition-all ${
-                          currentPage === 'landing' && activeSection === item.id
-                            ? 'bg-retro-terracota text-white shadow-md shadow-retro-terracota/15'
+                        transition={{ delay: navItems.length * 0.05 }}
+                        onClick={() => handleNavClick('admin', 'admin')}
+                        className={`w-full flex items-center space-x-2 px-4 py-3 rounded-2xl text-base font-black transition-all ${
+                          currentPage === 'admin'
+                            ? 'bg-retro-terracota text-white shadow-md'
                             : 'text-retro-terracota hover:bg-retro-crema/40'
                         }`}
                       >
-                        {item.label}
+                        <LayoutDashboard className="w-5 h-5" />
+                        <span>Panel Admin</span>
                       </motion.button>
-                    ))}
-
-                    {user && (
-                      user.isAdmin ? (
-                        <motion.button
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: navItems.length * 0.05 }}
-                          onClick={() => handleNavClick('admin', 'admin')}
-                          className={`w-full flex items-center space-x-2 px-4 py-3 rounded-2xl text-base font-black transition-all ${
-                            currentPage === 'admin'
-                              ? 'bg-retro-terracota text-white shadow-md'
-                              : 'text-retro-terracota hover:bg-retro-crema/40'
-                          }`}
-                        >
-                          <LayoutDashboard className="w-5 h-5" />
-                          <span>Panel Admin</span>
-                        </motion.button>
-                      ) : (
-                        <motion.button
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: navItems.length * 0.05 }}
-                          onClick={() => handleNavClick('dashboard', 'dashboard')}
-                          className={`w-full flex items-center space-x-2 px-4 py-3 rounded-2xl text-base font-black transition-all ${
-                            currentPage === 'dashboard'
-                              ? 'bg-retro-terracota text-white shadow-md'
-                              : 'text-retro-terracota hover:bg-retro-crema/40'
-                          }`}
-                        >
-                          <LayoutDashboard className="w-5 h-5" />
-                          <span>Mi Panel</span>
-                        </motion.button>
-                      )
-                    )}
-                  </nav>
-                </div>
-
-                {/* Footer of Drawer (User login/logout) */}
-                <div className="pt-6 border-t border-retro-terracota/10">
-                  {user ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-3 bg-retro-crema/40 p-3.5 rounded-2xl border border-retro-terracota/10">
-                        <div className="w-8 h-8 rounded-full bg-retro-terracota text-white flex items-center justify-center font-extrabold text-sm shadow-md">
-                          {user.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-retro-terracota">{user.name}</p>
-                          <p className="text-[10px] font-bold text-retro-terracota/60 truncate max-w-[180px]">{user.email}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          handleLogout();
-                        }}
-                        className="w-full flex items-center justify-center space-x-2 bg-retro-terracota/5 text-retro-terracota font-black py-3 rounded-2xl border border-retro-terracota/20 hover:bg-retro-terracota/10 transition-colors text-xs tracking-wider uppercase"
+                    ) : (
+                      <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: navItems.length * 0.05 }}
+                        onClick={() => handleNavClick('dashboard', 'dashboard')}
+                        className={`w-full flex items-center space-x-2 px-4 py-3 rounded-2xl text-base font-black transition-all ${
+                          currentPage === 'dashboard'
+                            ? 'bg-retro-terracota text-white shadow-md'
+                            : 'text-retro-terracota hover:bg-retro-crema/40'
+                        }`}
                       >
-                        <LogOut className="w-4.5 h-4.5" />
-                        <span>Cerrar Sesión</span>
-                      </button>
+                        <LayoutDashboard className="w-5 h-5" />
+                        <span>Mi Panel</span>
+                      </motion.button>
+                    )
+                  )}
+                </nav>
+              </div>
+
+              {/* Footer of Drawer (User login/logout) */}
+              <div className="pt-6 border-t border-retro-terracota/10">
+                {user ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3 bg-retro-crema/40 p-3.5 rounded-2xl border border-retro-terracota/10">
+                      <div className="w-8 h-8 rounded-full bg-retro-terracota text-white flex items-center justify-center font-extrabold text-sm shadow-md">
+                        {user.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-retro-terracota">{user.name}</p>
+                        <p className="text-[10px] font-bold text-retro-terracota/60 truncate max-w-[180px]">{user.email}</p>
+                      </div>
                     </div>
-                  ) : (
                     <button
                       onClick={() => {
                         setIsMobileMenuOpen(false);
-                        setShowAuthModal(true);
+                        handleLogout();
                       }}
-                      className="w-full bg-retro-mostaza text-white font-black py-3.5 rounded-2xl flex items-center justify-center shadow-md border border-retro-terracota/10 text-xs tracking-wider uppercase"
+                      className="w-full flex items-center justify-center space-x-2 bg-retro-terracota/5 text-retro-terracota font-black py-3 rounded-2xl border border-retro-terracota/20 hover:bg-retro-terracota/10 transition-colors text-xs tracking-wider uppercase"
                     >
-                      <span>Iniciar Sesión</span>
+                      <LogOut className="w-4.5 h-4.5" />
+                      <span>Cerrar Sesión</span>
                     </button>
-                  )}
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </header>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setShowAuthModal(true);
+                    }}
+                    className="w-full bg-retro-mostaza text-white font-black py-3.5 rounded-2xl flex items-center justify-center shadow-md border border-retro-terracota/10 text-xs tracking-wider uppercase"
+                  >
+                    <span>Iniciar Sesión</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Auth Modal Integration */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
