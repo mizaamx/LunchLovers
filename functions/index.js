@@ -502,4 +502,44 @@ exports.crearNuevoAdmin = onRequest({ cors: true }, async (req, res) => {
     res.status(500).json({ error: error.message || "Error al crear el administrador." });
   }
 });
+// Endpoint HTTPS seguro para cambiar contraseña de cualquier usuario (solo admins)
+exports.cambiarContrasenaUsuario = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ error: "No autorizado. Token no proporcionado." });
+    return;
+  }
+
+  const token = authHeader.split("Bearer ")[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    if (!decodedToken.admin) {
+      res.status(403).json({ error: "Prohibido. No tienes permisos de administrador." });
+      return;
+    }
+
+    const { uid, newPassword } = req.body;
+    if (!uid || !newPassword) {
+      res.status(400).json({ error: "Faltan campos: uid y newPassword son obligatorios." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
+      return;
+    }
+
+    await admin.auth().updateUser(uid, { password: newPassword });
+    console.log(`Contraseña actualizada para UID: ${uid} por admin: ${decodedToken.uid}`);
+    res.status(200).json({ success: true });
+
+  } catch (error) {
+    console.error("Error en cambiarContrasenaUsuario:", error);
+    res.status(500).json({ error: error.message || "Error al cambiar contraseña." });
+  }
+});
 

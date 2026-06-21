@@ -7,10 +7,8 @@ import {
   ChevronRight, 
   LogOut, 
   Home, 
-  TrendingUp, 
   CheckCircle2, 
   Clock, 
-  Compass, 
   Package, 
   AlertCircle,
   Utensils,
@@ -21,9 +19,11 @@ import {
   Save,
   Check,
   Loader2,
-  Coffee
+  Coffee,
+  KeyRound
 } from 'lucide-react';
-import { db, auth } from '../firebase/config';
+import { db, auth, storage } from '../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   collection, 
   onSnapshot, 
@@ -76,9 +76,21 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   
-  // Custom modal for dish delete confirmation
+  // Custom modal for dish/order/user delete confirmation
   const [dishToDelete, setDishToDelete] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+
+  // Password change modal state
+  const [userForPasswordChange, setUserForPasswordChange] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Edit client modal state
+  const [clientToEdit, setClientToEdit] = useState(null);
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientPhone, setEditClientPhone] = useState('');
+  const [isSavingClientDetails, setIsSavingClientDetails] = useState(false);
 
   // Dish form state
   const [showDishForm, setShowDishForm] = useState(false);
@@ -90,8 +102,11 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [fat, setFat] = useState(10);
   const [carbs, setCarbs] = useState(30);
   const [imageUrl, setImageUrl] = useState('/keto_salmon.webp');
-  const [category, setCategory] = useState('comida'); // 'comida', 'cena', 'snack', 'bebida'
+  const [category, setCategory] = useState('platillo'); // 'platillo', 'snack', 'bebida'
   const [isSavingDish, setIsSavingDish] = useState(false);
+  const [imageSource, setImageSource] = useState('preset'); // 'preset' or 'upload'
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   // States for new administrator registration
   const [newAdminName, setNewAdminName] = useState('');
@@ -180,12 +195,14 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
               id: doc.id,
               name: doc.data().name || 'Cliente',
               email: doc.data().email || 'correo@gdl.com',
+              phone: doc.data().phone || 'Sin teléfono',
               plan: doc.data().plan || null,
               status: doc.data().status || 'active',
               paymentStatus: doc.data().paymentStatus || 'pending',
               createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString().split('T')[0] : (doc.data().createdAt || '2026-05-01'),
               role: doc.data().role || 'user',
               isAdmin: doc.data().isAdmin || false,
+              limitOneOfEach: doc.data().limitOneOfEach || false,
             }));
             setUsers(list.length > 0 ? list : mockUsers);
           }, (err) => {
@@ -304,6 +321,8 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
 
   // CRUD Actions for Dishes
   const handleOpenDishForm = (dish = null) => {
+    setImageFile(null);
+    setImagePreview('');
     if (dish) {
       setEditingDish(dish);
       setDishName(dish.name);
@@ -313,7 +332,13 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       setFat(dish.macros?.fat || 10);
       setCarbs(dish.macros?.carbs || 30);
       setImageUrl(dish.imageUrl || '/keto_salmon.webp');
-      setCategory(dish.category || 'comida');
+      setCategory(dish.category || 'platillo');
+      
+      const isPreset = FOOD_IMAGES.some(img => img.url === dish.imageUrl);
+      setImageSource(isPreset ? 'preset' : 'upload');
+      if (!isPreset) {
+        setImagePreview(dish.imageUrl);
+      }
     } else {
       setEditingDish(null);
       setDishName('');
@@ -323,7 +348,8 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       setFat(10);
       setCarbs(30);
       setImageUrl('/keto_salmon.webp');
-      setCategory('comida');
+      setCategory('platillo');
+      setImageSource('preset');
     }
     setShowDishForm(true);
   };
@@ -336,11 +362,27 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     }
 
     setIsSavingDish(true);
+    let finalImageUrl = imageUrl;
+
     try {
+      if (imageSource === 'upload') {
+        if (imageFile) {
+          const fileRef = ref(storage, `dishes/${Date.now()}_${imageFile.name}`);
+          const snapshot = await uploadBytes(fileRef, imageFile);
+          finalImageUrl = await getDownloadURL(snapshot.ref);
+        } else if (editingDish) {
+          finalImageUrl = editingDish.imageUrl;
+        } else {
+          showError('Por favor selecciona una imagen de tu equipo para subir.');
+          setIsSavingDish(false);
+          return;
+        }
+      }
+
       const dishData = {
         name: dishName,
         description: dishDescription,
-        imageUrl,
+        imageUrl: finalImageUrl,
         category,
         macros: {
           calories: Number(calories),
@@ -350,19 +392,21 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         }
       };
 
-      if (editingDish) {
-        // Edit
-        await setDoc(doc(db, 'Dishes', editingDish.id), dishData);
-        showSuccess('Platillo editado exitosamente.');
-      } else {
-        // Create
-        await addDoc(collection(db, 'Dishes'), dishData);
-        showSuccess('Platillo creado exitosamente.');
+      if (db) {
+        if (editingDish) {
+          await setDoc(doc(db, 'Dishes', editingDish.id), dishData, { merge: true });
+          showSuccess('Platillo actualizado exitosamente.');
+        } else {
+          await addDoc(collection(db, 'Dishes'), dishData);
+          showSuccess('Platillo creado exitosamente.');
+        }
       }
+      setImageFile(null);
+      setImagePreview('');
       setShowDishForm(false);
     } catch (err) {
       console.error(err);
-      showError('No se pudo guardar el platillo.');
+      showError('Error al guardar el platillo y subir la imagen.');
     } finally {
       setIsSavingDish(false);
     }
@@ -550,6 +594,23 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     }
   };
 
+  const handleToggleLimitOneOfEach = async (client) => {
+    try {
+      const newValue = !client.limitOneOfEach;
+      if (db) {
+        const userRef = doc(db, 'users', client.id);
+        await setDoc(userRef, { limitOneOfEach: newValue }, { merge: true });
+        showSuccess(`Restricción '1 de c/u' para ${client.name} actualizada.`);
+      } else {
+        setUsers(prev => prev.map(u => u.id === client.id ? { ...u, limitOneOfEach: newValue } : u));
+        showSuccess(`Restricción actualizada en el simulador.`);
+      }
+    } catch (err) {
+      console.error(err);
+      showError('Error al actualizar la restricción del cliente.');
+    }
+  };
+
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     setIsSavingAdmin(true);
@@ -624,6 +685,82 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       showError('Error al eliminar cliente de la base de datos.');
     } finally {
       setUserToDelete(null);
+    }
+  };
+
+  // Delete an order from Firestore
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    try {
+      if (db) {
+        await deleteDoc(doc(db, 'orders', orderToDelete.id));
+        showSuccess(`Pedido "${orderToDelete.id}" eliminado exitosamente.`);
+      } else {
+        setOrders(prev => prev.filter(o => o.id !== orderToDelete.id));
+        showSuccess(`Pedido eliminado del simulador.`);
+      }
+    } catch (err) {
+      console.error(err);
+      showError('Error al eliminar el pedido.');
+    } finally {
+      setOrderToDelete(null);
+    }
+  };
+
+  // Change any user's password via secure backend endpoint
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!userForPasswordChange || !newPassword) return;
+    if (newPassword.length < 6) {
+      showError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const currentUser = auth.currentUser;
+      const token = await currentUser.getIdToken(true);
+      const response = await fetch('/api/cambiarContrasenaUsuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ uid: userForPasswordChange.id, newPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al cambiar contraseña.');
+      showSuccess(`Contraseña de ${userForPasswordChange.name} actualizada correctamente.`);
+      setUserForPasswordChange(null);
+      setNewPassword('');
+    } catch (err) {
+      console.error(err);
+      showError(err.message || 'Error al cambiar la contraseña.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleSaveClientDetails = async (e) => {
+    e.preventDefault();
+    if (!clientToEdit || !editClientName.trim()) return;
+    setIsSavingClientDetails(true);
+    try {
+      if (db) {
+        await setDoc(doc(db, 'users', clientToEdit.id), { 
+          name: editClientName, 
+          phone: editClientPhone 
+        }, { merge: true });
+        showSuccess(`Datos de ${editClientName} actualizados con éxito.`);
+      } else {
+        setUsers(prev => prev.map(u => u.id === clientToEdit.id ? { ...u, name: editClientName, phone: editClientPhone } : u));
+        showSuccess(`Datos de ${editClientName} actualizados en el simulador.`);
+      }
+      setClientToEdit(null);
+    } catch (err) {
+      console.error(err);
+      showError('Error al actualizar los datos del cliente.');
+    } finally {
+      setIsSavingClientDetails(false);
     }
   };
 
@@ -866,13 +1003,19 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                       <th className="p-4 sm:p-5">Platillos Seleccionados</th>
                       <th className="p-4 sm:p-5">Dirección de Entrega</th>
                       <th className="p-4 sm:p-5">Estado</th>
+                      <th className="p-4 sm:p-5">Acciones</th>
                     </tr>
                   </thead>
 <tbody className="divide-y divide-slate-800/60 font-medium">
                     {orders.map((order) => (
                       <tr key={order.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="p-4 sm:p-5 font-black text-retro-crema align-top whitespace-nowrap">
-                          {order.id}
+                          <div>{order.id}</div>
+                          {order.weekId && (
+                            <div className="text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                              Semana: {order.weekId}
+                            </div>
+                          )}
                         </td>
                         
                         <td className="p-4 sm:p-5 align-top">
@@ -983,11 +1126,22 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                             </select>
                           </div>
                         </td>
+
+                        {/* DELETE ORDER BUTTON */}
+                        <td className="p-4 sm:p-5 align-top">
+                          <button
+                            onClick={() => setOrderToDelete(order)}
+                            className="p-2 rounded-xl bg-red-950/30 hover:bg-red-900/40 text-red-400 hover:text-red-300 border border-red-900/30 transition-colors"
+                            title="Eliminar pedido"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {orders.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="py-12 text-center text-slate-500 font-bold">
+                        <td colSpan="6" className="py-12 text-center text-slate-500 font-bold">
                           No hay pedidos registrados.
                         </td>
                       </tr>
@@ -1042,8 +1196,48 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Imágenes de Comida Rápidas</label>
-                        <div className="flex items-center space-x-2">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Categoría del Alimento</label>
+                        <select
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 text-xs font-bold focus:outline-none"
+                        >
+                          <option value="platillo">Platillo</option>
+                          <option value="snack">Snack</option>
+                          <option value="bebida">Bebida</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 text-left">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Imagen del Platillo</label>
+                      <div className="flex space-x-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setImageSource('preset')}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                            imageSource === 'preset'
+                              ? 'bg-retro-terracota text-white'
+                              : 'bg-slate-900 text-slate-400 hover:bg-slate-850'
+                          }`}
+                        >
+                          Predefinidos (Galería)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setImageSource('upload')}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                            imageSource === 'upload'
+                              ? 'bg-retro-terracota text-white'
+                              : 'bg-slate-900 text-slate-400 hover:bg-slate-850'
+                          }`}
+                        >
+                          Subir desde Equipo
+                        </button>
+                      </div>
+
+                      {imageSource === 'preset' ? (
+                        <div className="flex items-center space-x-3">
                           <select
                             value={imageUrl}
                             onChange={(e) => setImageUrl(e.target.value)}
@@ -1052,45 +1246,41 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                             {FOOD_IMAGES.map((img) => (
                               <option key={img.url} value={img.url}>{img.label}</option>
                             ))}
-                            <option value="custom">URL de Imagen Personalizada</option>
                           </select>
                           <img
-                            src={imageUrl === 'custom' ? '/keto_salmon.webp' : imageUrl}
+                            src={imageUrl}
                             alt="Preview"
-                            className="w-9 h-9 object-cover rounded-lg border border-slate-800"
+                            className="w-12 h-12 object-cover rounded-xl border border-slate-800"
                             onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                           />
                         </div>
-                      </div>
-                    </div>
-
-                    {imageUrl === 'custom' && (
-                      <div className="mb-4">
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">URL de Imagen</label>
-                        <input
-                          type="text"
-                          placeholder="https://images.unsplash.com/... o /keto_salmon.webp"
-                          value={imageUrl === 'custom' ? '' : imageUrl}
-                          onChange={(e) => setImageUrl(e.target.value)}
-                          className="w-full px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 text-xs font-bold focus:outline-none"
-                        />
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Categoría del Alimento</label>
-                        <select
-                          value={category}
-                          onChange={(e) => setCategory(e.target.value)}
-                          className="w-full px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 text-xs font-bold focus:outline-none"
-                        >
-                          <option value="comida">Almuerzo (Comida)</option>
-                          <option value="cena">Cena</option>
-                          <option value="snack">Snack</option>
-                          <option value="bebida">Bebida</option>
-                        </select>
-                      </div>
+                      ) : (
+                        <div className="flex items-center space-x-4 p-4 bg-slate-900/50 border border-slate-800 rounded-2xl">
+                          <div className="flex-grow">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  setImageFile(file);
+                                  setImagePreview(URL.createObjectURL(file));
+                                }
+                              }}
+                              className="w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-slate-800 file:text-retro-crema hover:file:bg-slate-750 cursor-pointer"
+                            />
+                            <p className="text-[9px] text-slate-500 font-bold mt-1.5">Formatos soportados: PNG, JPG, WEBP. Se sube al guardar el platillo.</p>
+                          </div>
+                          {(imagePreview || imageUrl) && (
+                            <img
+                              src={imagePreview || imageUrl}
+                              alt="Preview"
+                              className="w-12 h-12 object-cover rounded-xl border border-slate-800 flex-shrink-0"
+                              onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-4">
@@ -1410,6 +1600,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                       <th className="p-4 sm:p-5">Plan de Comidas</th>
                       <th className="p-4 sm:p-5 text-center">Estado de Pago</th>
                       <th className="p-4 sm:p-5 text-right">Estatus Suscripción</th>
+                      <th className="p-4 sm:p-5 text-center">Limitado (1 de c/u)</th>
                       <th className="p-4 sm:p-5 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -1417,7 +1608,8 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                     {users.map((client) => (
                       <tr key={client.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="p-4 sm:p-5 font-black text-slate-200">
-                          {client.name}
+                          <div>{client.name}</div>
+                          <div className="text-[10px] text-slate-500 font-bold mt-0.5">{client.phone || 'Sin teléfono'}</div>
                         </td>
                         
                         <td className="p-4 sm:p-5 font-extrabold text-slate-300">
@@ -1489,14 +1681,47 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                           </select>
                         </td>
 
-                        <td className="p-4 sm:p-5 text-right">
+                        <td className="p-4 sm:p-5 text-center">
                           <button
-                            onClick={() => setUserToDelete(client)}
-                            className="p-2 bg-red-950/20 hover:bg-red-950 border border-red-900/40 hover:border-red-900 text-red-400 hover:text-red-200 rounded-lg transition-colors"
-                            title="Eliminar Cliente"
+                            onClick={() => handleToggleLimitOneOfEach(client)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all tracking-wider ${
+                              client.limitOneOfEach
+                                ? 'bg-indigo-950/40 text-indigo-300 hover:bg-indigo-950 border border-indigo-800/40'
+                                : 'bg-slate-900 text-slate-400 hover:bg-slate-850 border border-slate-800'
+                            }`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {client.limitOneOfEach ? 'Habilitado' : 'Deshabilitado'}
                           </button>
+                        </td>
+
+                        <td className="p-4 sm:p-5 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => { 
+                                setClientToEdit(client); 
+                                setEditClientName(client.name || ''); 
+                                setEditClientPhone(client.phone && client.phone !== 'Sin teléfono' ? client.phone : ''); 
+                              }}
+                              className="p-2 bg-blue-950/20 hover:bg-blue-900/30 border border-blue-900/40 text-blue-400 hover:text-blue-200 rounded-lg transition-colors"
+                              title="Editar Datos del Cliente"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => { setUserForPasswordChange(client); setNewPassword(''); }}
+                              className="p-2 bg-blue-950/20 hover:bg-blue-900/30 border border-blue-900/40 text-blue-400 hover:text-blue-200 rounded-lg transition-colors"
+                              title="Cambiar Contraseña"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setUserToDelete(client)}
+                              className="p-2 bg-red-950/20 hover:bg-red-950 border border-red-900/40 hover:border-red-900 text-red-400 hover:text-red-200 rounded-lg transition-colors"
+                              title="Eliminar Cliente"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1738,6 +1963,161 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                   Eliminar
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* DELETE ORDER CONFIRMATION MODAL */}
+        {orderToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+              onClick={() => setOrderToDelete(null)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full relative z-10 text-left shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-[-30px] right-[-30px] w-20 h-20 bg-red-900/10 rounded-full blur-xl pointer-events-none" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-retro-crema mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                ¿Eliminar Pedido?
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed mb-6 font-semibold">
+                ¿Estás seguro de que deseas eliminar el pedido <span className="text-retro-terracota font-black">"{orderToDelete.id}"</span> de <span className="text-retro-crema font-bold">{orderToDelete.userName}</span>? Esta acción es permanente e irreversible.
+              </p>
+              <div className="flex justify-end space-x-2">
+                <button type="button" onClick={() => setOrderToDelete(null)}
+                  className="px-4 py-2 bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 rounded-xl font-bold text-xs transition-colors">
+                  Cancelar
+                </button>
+                <button type="button" onClick={confirmDeleteOrder}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl font-black text-xs transition-colors shadow-lg">
+                  Eliminar Pedido
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* CHANGE PASSWORD MODAL */}
+        {userForPasswordChange && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+              onClick={() => { setUserForPasswordChange(null); setNewPassword(''); }} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full relative z-10 text-left shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-[-30px] right-[-30px] w-20 h-20 bg-blue-900/10 rounded-full blur-xl pointer-events-none" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-retro-crema mb-1 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-blue-400" />
+                Cambiar Contraseña
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mb-5">
+                Establece una nueva contraseña para <span className="text-retro-crema font-black">{userForPasswordChange.name}</span> ({userForPasswordChange.email}).
+              </p>
+              <form onSubmit={handleChangePassword}>
+                <div className="mb-5">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Nueva Contraseña (mínimo 6 caracteres)</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nueva contraseña..."
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-600 focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button type="button"
+                    onClick={() => { setUserForPasswordChange(null); setNewPassword(''); }}
+                    className="px-4 py-2 bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 rounded-xl font-bold text-xs transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={isChangingPassword || newPassword.length < 6}
+                    className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-black text-xs transition-colors shadow-lg disabled:opacity-50 flex items-center space-x-1.5">
+                    {isChangingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                    <span>{isChangingPassword ? 'Guardando...' : 'Cambiar Contraseña'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* EDIT CLIENT DETAILS MODAL */}
+        {clientToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+              onClick={() => { setClientToEdit(null); }} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full relative z-10 text-left shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-[-30px] right-[-30px] w-20 h-20 bg-blue-900/10 rounded-full blur-xl pointer-events-none" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-retro-crema mb-1 flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-400" />
+                Editar Datos de Cliente
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mb-5">
+                Modifica los datos personales de <span className="text-retro-crema font-black">{clientToEdit.name}</span> ({clientToEdit.email}).
+              </p>
+              <form onSubmit={handleSaveClientDetails}>
+                <div className="mb-4">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={editClientName}
+                    onChange={(e) => setEditClientName(e.target.value)}
+                    placeholder="Nombre completo..."
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-600 focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                  />
+                </div>
+                <div className="mb-5">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Teléfono</label>
+                  <input
+                    type="text"
+                    value={editClientPhone}
+                    onChange={(e) => setEditClientPhone(e.target.value)}
+                    placeholder="Ej. 3312345678"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-blue-600 focus:outline-none rounded-xl text-xs font-bold text-slate-200 placeholder-slate-600"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button type="button"
+                    onClick={() => { setClientToEdit(null); }}
+                    className="px-4 py-2 bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 rounded-xl font-bold text-xs transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={isSavingClientDetails || !editClientName.trim()}
+                    className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-black text-xs transition-colors shadow-lg disabled:opacity-50 flex items-center space-x-1.5">
+                    {isSavingClientDetails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>{isSavingClientDetails ? 'Guardando...' : 'Guardar Cambios'}</span>
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

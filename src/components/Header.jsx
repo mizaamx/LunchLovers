@@ -12,24 +12,32 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-      
-      if (currentPage === 'landing') {
-        const sections = ['inicio', 'como-funciona', 'catalogo', 'pricing', 'testimonios', 'contacto'];
-        const scrollPosition = window.scrollY + 120;
+    let ticking = false;
 
-        for (const section of sections) {
-          const el = document.getElementById(section);
-          if (el) {
-            const top = el.offsetTop;
-            const height = el.offsetHeight;
-            if (scrollPosition >= top && scrollPosition < top + height) {
-              setActiveSection(section);
-              break;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          
+          if (currentPage === 'landing') {
+            const sections = ['inicio', 'como-funciona', 'catalogo', 'pricing', 'testimonios', 'contacto'];
+            const scrollPosition = window.scrollY + 120;
+
+            for (const section of sections) {
+              const el = document.getElementById(section);
+              if (el) {
+                const top = el.offsetTop;
+                const height = el.offsetHeight;
+                if (scrollPosition >= top && scrollPosition < top + height) {
+                  setActiveSection(section);
+                  break;
+                }
+              }
             }
           }
-        }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
     window.addEventListener('scroll', handleScroll);

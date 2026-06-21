@@ -7,6 +7,7 @@ import {
   getDoc, 
   getDocs, 
   setDoc, 
+  addDoc, 
   query, 
   where, 
   limit as firestoreLimit, 
@@ -96,6 +97,7 @@ export function MealSelectionProvider({ children }) {
   const [allDishes, setAllDishes] = useState([]); // All dishes in inventory
   const [activeMenu, setActiveMenu] = useState(null); // Active WeeklyMenus doc
   const [userSelectionDoc, setUserSelectionDoc] = useState(null); // Saved selection from UserSelections
+  const [isAccepted, setIsAccepted] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -226,6 +228,7 @@ export function MealSelectionProvider({ children }) {
             }
           } else {
             setWithCutlery(false);
+            setIsAccepted(false);
             // Check user profile for selectedDays or selectedMeals
             if (user.selectedDays && Object.keys(user.selectedDays).length > 0) {
               setSelectedDays(user.selectedDays);
@@ -257,6 +260,7 @@ export function MealSelectionProvider({ children }) {
           if (selectionSnap.exists()) {
             const data = selectionSnap.data();
             setUserSelectionDoc(data);
+            setIsAccepted(data.isAccepted || false);
             
             if (data.withCutlery !== undefined) {
               setWithCutlery(data.withCutlery);
@@ -305,6 +309,7 @@ export function MealSelectionProvider({ children }) {
             setSelectedDays(getEmptySelections(plan));
             setWithCutlery(false);
             setDishes([]); // Did not select anything
+            setIsAccepted(false);
           }
         } else {
           setDishes([]);
@@ -330,6 +335,11 @@ export function MealSelectionProvider({ children }) {
   const assignDishToSlot = (day, slot, dishId) => {
     setError(null);
 
+    if (isAccepted) {
+      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
+      return false;
+    }
+
     if (!isSelectionOpen) {
       setError('El periodo de selección de menú está cerrado.');
       return false;
@@ -345,6 +355,73 @@ export function MealSelectionProvider({ children }) {
       return false;
     }
 
+    // Validation for plan limits (both daily and weekly)
+    if (dishId) {
+      const planLimit = PLAN_LIMITS[plan] || 5;
+      let dailyLimit = 1;
+      if (['cal800_2', 'cal600_2', 'normal'].includes(plan)) {
+        dailyLimit = 2;
+      } else if (['cal800_3', 'cal600_3', 'pro'].includes(plan)) {
+        dailyLimit = 3;
+      }
+
+      // 1. Weekly limit validation (excluding current slot)
+      let totalSelected = 0;
+      Object.entries(selectedDays).forEach(([d, slotsObj]) => {
+        Object.entries(slotsObj).forEach(([s, val]) => {
+          if (val && !(d === day && s === slot)) {
+            totalSelected++;
+          }
+        });
+      });
+      if (totalSelected >= planLimit) {
+        setError(`Límite semanal alcanzado: Tu plan solo permite seleccionar hasta ${planLimit} platillos por semana.`);
+        return false;
+      }
+
+      // 2. Daily limit validation (excluding current slot)
+      let dailySelected = 0;
+      const daySlots = selectedDays[day] || {};
+      Object.entries(daySlots).forEach(([s, val]) => {
+        if (val && s !== slot) {
+          dailySelected++;
+        }
+      });
+      if (dailySelected >= dailyLimit) {
+        setError(`Límite diario alcanzado: Tu plan solo permite seleccionar hasta ${dailyLimit} platillos por día.`);
+        return false;
+      }
+    }
+
+    // Validation for limitOneOfEach (Uno de cada uno) restriction
+    if (user.limitOneOfEach) {
+      const targetDish = allDishes.find(d => d.id === dishId);
+      if (targetDish) {
+        const getNormalizedCategory = (cat) => {
+          const c = (cat || '').toLowerCase();
+          if (c === 'comida' || c === 'cena' || c === 'platillo' || !c) return 'platillo';
+          if (c === 'snack' || c === 'snacks') return 'snack';
+          if (c === 'bebida' || c === 'bebidas') return 'bebida';
+          return c;
+        };
+
+        const newCat = getNormalizedCategory(targetDish.category);
+        const daySlots = selectedDays[day] || {};
+        const hasDuplicate = Object.entries(daySlots).some(([s, id]) => {
+          if (s === slot || !id) return false;
+          const otherDish = allDishes.find(d => d.id === id);
+          if (!otherDish) return false;
+          return getNormalizedCategory(otherDish.category) === newCat;
+        });
+
+        if (hasDuplicate) {
+          const catName = newCat === 'platillo' ? 'platillo principal' : newCat === 'bebida' ? 'bebida' : 'snack';
+          setError(`Límite activado: Ya tienes seleccionado un ${catName} para el día ${day}.`);
+          return false;
+        }
+      }
+    }
+
     setSelectedDays((prev) => {
       const updated = { ...prev };
       if (!updated[day]) updated[day] = {};
@@ -355,6 +432,10 @@ export function MealSelectionProvider({ children }) {
   };
 
   const removeDishFromSlot = (day, slot) => {
+    if (isAccepted) {
+      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
+      return;
+    }
     if (!isSelectionOpen) {
       setError('El periodo de selección de menú está cerrado.');
       return;
@@ -370,6 +451,10 @@ export function MealSelectionProvider({ children }) {
   };
 
   const clearSelection = () => {
+    if (isAccepted) {
+      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
+      return;
+    }
     if (!isSelectionOpen) {
       setError('El periodo de selección de menú está cerrado.');
       return;
@@ -390,10 +475,14 @@ export function MealSelectionProvider({ children }) {
     return [];
   }, [activeMenu, allDishes]);
 
-  const saveSelection = async () => {
+  const saveSelection = async (acceptSelection = false) => {
     if (!user) return;
     if (user.paymentStatus === 'pending') {
       setError('Tu pago está pendiente de verificación por el administrador.');
+      return;
+    }
+    if (isAccepted) {
+      setError('Tu selección ya ha sido confirmada y aceptada. No se puede guardar de nuevo.');
       return;
     }
     if (!isSelectionOpen) {
@@ -414,6 +503,7 @@ export function MealSelectionProvider({ children }) {
         selectedDays: selectedDays,
         selectedDishes: selectedMealIds, // flat list of IDs
         withCutlery: withCutlery,
+        isAccepted: acceptSelection,
         timestamp: serverTimestamp()
       });
 
@@ -424,20 +514,44 @@ export function MealSelectionProvider({ children }) {
         withCutlery: withCutlery
       });
 
-      // 3. Update active/pending orders in Firestore in parallel
+      // 3. Update active/pending orders in Firestore in parallel or create one if none exists
       try {
         const q = query(
           collection(db, 'orders'), 
           where('userId', '==', user.uid), 
-          where('status', 'in', ['pendiente', 'en cocina'])
+          where('weekId', '==', weekId)
         );
         const ordersSnap = await getDocs(q);
-        for (const orderDoc of ordersSnap.docs) {
-          await setDoc(doc(db, 'orders', orderDoc.id), {
+        if (!ordersSnap.empty) {
+          for (const orderDoc of ordersSnap.docs) {
+            await setDoc(doc(db, 'orders', orderDoc.id), {
+              selectedDays: selectedDays,
+              selectedMeals: selectedMealIds,
+              withCutlery: withCutlery,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          }
+        } else {
+          // Create new order
+          const newOrderData = {
+            userId: user.uid,
+            userName: user.name || 'Cliente',
+            userEmail: user.email || 'correo@gdl.com',
+            weekId: weekId,
             selectedDays: selectedDays,
-            selectedMeals: selectedMealIds,
-            withCutlery: withCutlery
-          }, { merge: true });
+            selectedMealIds: selectedMealIds, // flat list
+            withCutlery: withCutlery,
+            status: 'pendiente',
+            createdAt: new Date().toISOString(),
+            deliveryAddress: user.address || {
+              street: '',
+              colony: '',
+              municipality: 'Guadalajara',
+              zipCode: '',
+              instructions: ''
+            }
+          };
+          await addDoc(collection(db, 'orders'), newOrderData);
         }
       } catch (errOrder) {
         console.warn('Error syncing active orders:', errOrder);
@@ -469,6 +583,8 @@ export function MealSelectionProvider({ children }) {
         setError,
         isSyncing,
         syncSuccess,
+        isAccepted,
+        setIsAccepted,
         
         // Shipping and Cutlery variables
         withCutlery,

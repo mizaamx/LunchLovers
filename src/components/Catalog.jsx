@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 import RequirePaymentGate from './RequirePaymentGate';
 
-const categories = ['Todos', 'Almuerzos', 'Cenas', 'Snacks', 'Bebidas'];
+const categories = ['Todos', 'Platillos', 'Snacks', 'Bebidas'];
 
 // Simulated generic dishes for new/unregistered visitors
 const MOCK_GENERIC_DISHES = [
@@ -81,6 +81,7 @@ export default function Catalog() {
   
   // Custom states for redesign
   const [selectedDishForModal, setSelectedDishForModal] = useState(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   
   const { user } = useAuth();
   
@@ -97,6 +98,7 @@ export default function Catalog() {
     setError,
     isSyncing,
     syncSuccess,
+    isAccepted,
     
     // Shipping and Cutlery variables
     withCutlery,
@@ -189,15 +191,14 @@ export default function Catalog() {
   const filteredDishes = useMemo(() => {
     return displayDishes.filter((dish) => {
       let matchesFilter = false;
+      const cat = (dish.category || '').toLowerCase();
       if (activeFilter === 'Todos') {
         matchesFilter = true;
-      } else if (activeFilter === 'Almuerzos' && (dish.category === 'comida' || !dish.category)) {
+      } else if (activeFilter === 'Platillos' && (cat === 'platillo' || cat === 'comida' || cat === 'cena' || !cat)) {
         matchesFilter = true;
-      } else if (activeFilter === 'Cenas' && dish.category === 'cena') {
+      } else if (activeFilter === 'Snacks' && (cat === 'snack' || cat === 'snacks')) {
         matchesFilter = true;
-      } else if (activeFilter === 'Snacks' && dish.category === 'snack') {
-        matchesFilter = true;
-      } else if (activeFilter === 'Bebidas' && dish.category === 'bebida') {
+      } else if (activeFilter === 'Bebidas' && (cat === 'bebida' || cat === 'bebidas')) {
         matchesFilter = true;
       }
       const matchesSearch = (dish.name || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -629,11 +630,18 @@ export default function Catalog() {
                               Elegir
                             </button>
                           ) : isSelectionOpen ? (
-                            isSelectedForSlot ? (
+                            isAccepted ? (
+                              isSelectedForSlot && (
+                                <span className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-250">
+                                  <CheckCircle className="w-3.5 h-3.5 animate-pulse" />
+                                  <span>Elegido</span>
+                                </span>
+                              )
+                            ) : isSelectedForSlot ? (
                               <div className="flex items-center space-x-2">
                                 <button
                                   onClick={() => removeDishFromSlot(activeDay, activeSlot)}
-                                  className="flex items-center justify-center p-2 rounded-xl text-red-650 hover:bg-red-50 border border-red-200 transition-all"
+                                  className="flex items-center justify-center p-2 rounded-xl text-red-650 hover:bg-red-55 border border-red-200 transition-all"
                                   title="Quitar"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -682,6 +690,170 @@ export default function Catalog() {
             )}
           </motion.div>
         )}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
+      {/* FLOATING SELECTION BAR */}
+      {user && plan && (
+        <div className="fixed bottom-6 inset-x-4 max-w-4xl mx-auto z-45 font-sans animate-fade-in-up">
+          <div className="bg-white/90 backdrop-blur-md border border-retro-terracota/15 p-4 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
+            {/* Left Info: Selections count and days progress */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <div>
+                <span className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-widest block font-sans">Mi Selección Semanal</span>
+                <span className="text-sm font-black text-retro-terracota">
+                  {selectedMealIds.length} de {limit} platillos seleccionados
+                </span>
+              </div>
+              
+              {/* Day dots checklist */}
+              <div className="flex items-center gap-2.5 bg-retro-crema/40 px-3 py-1.5 rounded-2xl border border-retro-terracota/5">
+                {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map((d) => {
+                  const dayObj = selectedDays[d] || {};
+                  const isDayCompleted = Object.values(dayObj).some(Boolean);
+                  return (
+                    <div key={d} className="flex flex-col items-center">
+                      <span className="text-[8px] font-black uppercase text-retro-terracota/40 font-sans tracking-wide">
+                        {d === 'miercoles' ? 'Mié' : d.substring(0, 3)}
+                      </span>
+                      <span className={`w-2.5 h-2.5 rounded-full mt-0.5 border ${
+                        isDayCompleted 
+                          ? 'bg-emerald-500 border-emerald-600 shadow-sm shadow-emerald-500/30' 
+                          : 'bg-stone-300 border-stone-400'
+                      }`} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Action: Verify / lock selection */}
+            <div>
+              {isAccepted ? (
+                <div className="flex items-center space-x-1.5 px-4.5 py-2.5 bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 animate-pulse" />
+                  <span>Selección Confirmada y Enviada</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={selectedMealIds.length === 0}
+                  onClick={() => setShowVerifyModal(true)}
+                  className="px-5 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wider bg-retro-terracota hover:bg-retro-terracota/95 text-white transition-all shadow-md shadow-retro-terracota/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5 font-sans"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Verificar y Enviar Menú</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VERIFY ORDER MODAL */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans text-left">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl border border-retro-terracota/10 max-h-[90vh] flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-retro-terracota/10">
+              <h3 className="text-lg font-black text-retro-terracota flex items-center gap-2">
+                <CheckCircle className="w-5.5 h-5.5 text-emerald-600 stroke-[2.5]" />
+                Verifica tu Selección Semanal
+              </h3>
+              <p className="text-[11px] text-retro-terracota/70 font-semibold mt-1.5 leading-relaxed">
+                Por favor, revisa tus platillos seleccionados antes de enviar. <strong>Una vez aceptada tu selección, ya no podrás modificarla para esta semana.</strong>
+              </p>
+            </div>
+
+            {/* Content list */}
+            <div className="p-6 overflow-y-auto flex-grow space-y-4">
+              {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map((day) => {
+                const dayObj = selectedDays[day] || {};
+                const slots = Object.keys(dayObj).filter(slot => dayObj[slot] !== null);
+                
+                if (slots.length === 0) return null;
+                
+                return (
+                  <div key={day} className="p-3 bg-retro-crema/15 border border-retro-terracota/10 rounded-2xl">
+                    <h4 className="text-[10px] font-black text-retro-terracota uppercase tracking-widest border-b border-retro-terracota/5 pb-1 mb-2">
+                      {formatDayName(day)}
+                    </h4>
+                    <div className="space-y-2">
+                      {slots.map(slot => {
+                        const dishId = dayObj[slot];
+                        const dish = allDishes.find(d => d.id === dishId);
+                        return dish ? (
+                          <div key={slot} className="flex items-center gap-3">
+                            <img
+                              src={dish.imageUrl}
+                              alt={dish.name}
+                              className="w-8 h-8 object-cover rounded-lg border border-retro-terracota/10"
+                              onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                            />
+                            <div>
+                              <div className="text-xs font-black text-retro-terracota leading-snug line-clamp-1">{dish.name}</div>
+                              <div className="text-[9px] font-bold text-retro-terracota/50 uppercase tracking-wider mt-0.5">
+                                {formatSlotName(slot)} • {dish.macros?.calories || 0} kcal
+                              </div>
+                            </div>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Delivery info summary inside verification modal */}
+              <div className="p-4 bg-retro-crema/30 rounded-2xl border border-retro-terracota/10 text-xs text-retro-terracota font-bold space-y-2">
+                <div className="flex items-start gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-retro-terracota/60 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-[9px] font-black uppercase text-retro-terracota/50 block font-sans tracking-wide">Dirección de Envío</span>
+                    <span>{user?.address?.street ? `${user.address.street}, ${user.address.colony}, ${user.address.municipality}` : 'Sin dirección'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-retro-terracota/5 pt-2 text-[10.5px]">
+                  <span>Cubiertos incluidos:</span>
+                  <span className="font-black text-retro-terracota">{withCutlery ? 'Sí' : 'No'}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10.5px]">
+                  <span>Costo de envío estimado:</span>
+                  <span className="font-black text-retro-terracota">${shippingCost.toFixed(2)} MXN</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-retro-terracota/10 flex items-center justify-end space-x-2 bg-stone-50">
+              <button
+                type="button"
+                onClick={() => setShowVerifyModal(false)}
+                className="px-4 py-2.5 bg-white border border-retro-terracota/10 hover:border-retro-terracota/30 text-retro-terracota font-bold text-xs rounded-xl transition-all"
+              >
+                Regresar y Modificar
+              </button>
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={async () => {
+                  await saveSelection(true); // Save with isAccepted = true
+                  setShowVerifyModal(false);
+                }}
+                className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                <span>{isSyncing ? 'Guardando...' : 'Confirmar y Aceptar Orden'}</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* DISH DETAILS MODAL */}
@@ -802,7 +974,18 @@ export default function Catalog() {
                       Ver planes de suscripción
                     </button>
                   ) : isSelectionOpen ? (
-                    selectedDays[activeDay]?.[activeSlot] === selectedDishForModal.id ? (
+                    isAccepted ? (
+                      selectedDays[activeDay]?.[activeSlot] === selectedDishForModal.id ? (
+                        <div className="text-center py-2.5 text-xs font-black text-emerald-700 uppercase tracking-widest border border-dashed border-emerald-300 bg-emerald-50/50 rounded-xl font-sans flex items-center justify-center space-x-1.5">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Platillo Elegido y Confirmado</span>
+                        </div>
+                      ) : (
+                        <div className="text-center py-2.5 text-xs font-black text-retro-terracota/50 uppercase tracking-widest border border-dashed border-retro-terracota/20 rounded-xl font-sans">
+                          Selección Confirmada
+                        </div>
+                      )
+                    ) : selectedDays[activeDay]?.[activeSlot] === selectedDishForModal.id ? (
                       <button
                         onClick={() => {
                           removeDishFromSlot(activeDay, activeSlot);
@@ -839,48 +1022,6 @@ export default function Catalog() {
         )}
       </AnimatePresence>,
       document.body
-      )}
-
-      {/* STICKY BOTTOM SUMMARY BAR */}
-      {user && plan && (
-        <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-md border-t border-retro-terracota/10 py-4 px-6 shadow-2xl z-40 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in font-sans">
-          <div className="flex items-center space-x-4 w-full sm:w-auto text-left">
-            <div className="flex-grow sm:flex-grow-0">
-              <div className="flex items-center justify-between text-[10px] font-black text-retro-terracota/60 uppercase tracking-wider mb-1.5">
-                <span>SELECCIÓN SEMANAL (Envío: ${shippingCost.toFixed(2)} MXN)</span>
-                <span>{selectedMealIds.length} / {limit} PLATILLOS</span>
-              </div>
-              <div className="w-full sm:w-48 bg-retro-crema/60 h-2.5 rounded-full overflow-hidden border border-retro-terracota/5">
-                <div 
-                  className="bg-emerald-800 h-full transition-all duration-300 rounded-full" 
-                  style={{ width: `${Math.min((selectedMealIds.length / limit) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
-            {isSelectionOpen && (
-              <button
-                onClick={saveSelection}
-                disabled={isSyncing}
-                className="flex-grow sm:flex-grow-0 bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold py-3 px-6 rounded-xl flex items-center justify-center space-x-2 shadow-md shadow-emerald-800/10 transition-colors disabled:bg-emerald-800/40 text-xs"
-              >
-                {isSyncing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Guardar Menú</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
       )}
 
 

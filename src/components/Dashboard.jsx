@@ -3,23 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, CreditCard, History, CheckCircle, Truck, AlertCircle, Save, Pause, Play } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMealSelection } from '../context/MealSelectionContext';
+import { auth } from '../firebase/config';
+import { updatePassword } from 'firebase/auth';
 
-const municipalities = [
-  'Guadalajara'
-];
-
-const mockCatalog = [
-  { id: 1, name: 'Amanida de Saumon avec Avocat', image: '/keto_salmon.webp', cal: 420, protein: '38 pro' },
-  { id: 2, name: 'Buddha Bowl de Quinoa avec Edamame', image: '/vegan_bowl.webp', cal: 380, protein: '16 pro' },
-  { id: 3, name: 'Salată de Pui et Quinoa Fitness', image: '/protein_chicken.webp', cal: 410, protein: '45 pro' },
-  { id: 4, name: 'Ensalada de Tofu Crujiente avec Végétaux', image: '/keto_vegan_salad.webp', cal: 310, protein: '18 pro' },
-  { id: 5, name: 'Saumon Glacé Oriental Style Keto', image: '/keto_salmon.webp', cal: 395, protein: '35 pro' },
-  { id: 6, name: 'Curry de Poids Chiches et Quinoa Fit', image: '/vegan_bowl.webp', cal: 440, protein: '22 pro' },
-];
 
 export default function Dashboard({ setCurrentPage, setActiveSection }) {
   const { user, updateProfile, resendVerificationEmail } = useAuth();
-  const { selectedDays, selectedMealIds, allDishes } = useMealSelection();
+  const { selectedDays, selectedMealIds, allDishes, isAccepted } = useMealSelection();
   
   const getPlanDetails = (planId) => {
     const plansInfo = {
@@ -57,6 +47,18 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
   const [saveError, setSaveError] = useState(null);
   const [hasClickedCoverageCheck, setHasClickedCoverageCheck] = useState(false);
   const [isPlanPaused, setIsPlanPaused] = useState(false);
+
+  // Profile and Password states
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
 
   // Reset coverage check state if address details are modified
   React.useEffect(() => {
@@ -123,6 +125,81 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
       setIsSaving(false);
     }
   }, [updateProfile, street, colony, municipality, zipCode, instructions, hasClickedCoverageCheck]);
+
+  React.useEffect(() => {
+    if (user) {
+      setProfileName(user.name || '');
+      setProfilePhone(user.phone || '');
+    }
+  }, [user]);
+
+  const handleUpdateProfile = useCallback(async (e) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    setProfileSuccess(false);
+    setProfileError(null);
+
+    if (!profileName.trim()) {
+      setProfileError('El nombre no puede estar vacío.');
+      setIsUpdatingProfile(false);
+      return;
+    }
+
+    try {
+      await updateProfile({
+        name: profileName,
+        phone: profilePhone
+      });
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 4000);
+    } catch (err) {
+      console.error(err);
+      setProfileError('No se pudo actualizar el perfil. Intenta de nuevo.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  }, [updateProfile, profileName, profilePhone]);
+
+  const handleUpdatePassword = useCallback(async (e) => {
+    e.preventDefault();
+    setIsUpdatingPassword(true);
+    setPasswordSuccess(false);
+    setPasswordError(null);
+
+    if (newPassword.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres.');
+      setIsUpdatingPassword(false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      setIsUpdatingPassword(false);
+      return;
+    }
+
+    try {
+      const authUser = auth.currentUser;
+      if (authUser) {
+        await updatePassword(authUser, newPassword);
+        setPasswordSuccess(true);
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordSuccess(false), 4000);
+      } else {
+        throw new Error('No hay sesión de usuario activa.');
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.code === 'auth/requires-recent-login') {
+        setPasswordError('Por seguridad, esta acción requiere iniciar sesión de nuevo antes de cambiar tu contraseña.');
+      } else {
+        setPasswordError('No se pudo cambiar la contraseña. Intenta de nuevo.');
+      }
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  }, [newPassword, confirmPassword]);
 
   return (
     <section className="py-24 bg-gradient-to-b from-retro-crema to-white min-h-screen text-left">
@@ -326,12 +403,19 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                       </div>
                     );
                   })}
-                  <button 
-                    onClick={handleModifyMeals}
-                    className="w-full text-center py-2 text-xs font-bold text-retro-terracota hover:text-retro-mostaza hover:underline pt-2"
-                  >
-                    Modificar selección de platillos
-                  </button>
+                  {isAccepted ? (
+                    <div className="text-center py-2 text-[10px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 rounded-xl border border-emerald-250 mt-2 flex items-center justify-center space-x-1.5 font-sans">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Menú Semanal Confirmado y Enviado</span>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={handleModifyMeals}
+                      className="w-full text-center py-2 text-xs font-bold text-retro-terracota hover:text-retro-mostaza hover:underline pt-2"
+                    >
+                      Modificar selección de platillos
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="p-8 text-center bg-retro-crema/20 rounded-2xl border border-dashed border-retro-terracota/20 flex flex-col items-center">
@@ -350,6 +434,124 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
 
           {/* RIGHT COLUMN: Dirección ZMG + Historial */}
           <div className="lg:col-span-6 space-y-8">
+            
+            {/* CARD 2.5: Datos de Perfil y Seguridad */}
+            <div className="glass-card p-6 rounded-3xl relative">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-retro-crema text-retro-terracota flex items-center justify-center shadow-md border border-retro-terracota/10">
+                  <span className="text-base font-black">👤</span>
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-retro-terracota font-sans">Mi Perfil y Seguridad</h3>
+                  <p className="text-retro-terracota/60 text-xs font-bold">Datos personales y cambio de contraseña</p>
+                </div>
+              </div>
+
+              {/* Seccion 1: Datos Personales */}
+              <form onSubmit={handleUpdateProfile} className="space-y-4 pb-6 border-b border-retro-terracota/10">
+                <h4 className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-widest mb-2">Información Personal</h4>
+                
+                {profileSuccess && (
+                  <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-800 p-2.5 rounded-2xl text-[11px] font-black flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>¡Perfil actualizado exitosamente!</span>
+                  </div>
+                )}
+                {profileError && (
+                  <div className="bg-rose-50 border-2 border-rose-500 text-rose-800 p-2.5 rounded-2xl text-[11px] font-black flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0 text-rose-600" />
+                    <span>{profileError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                  <div>
+                    <label className="block text-[10px] font-black text-retro-terracota uppercase tracking-wider mb-1">Nombre Completo</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota bg-white text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-retro-terracota uppercase tracking-wider mb-1">Teléfono</label>
+                    <input
+                      type="text"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                      placeholder="Ej. 3312345678"
+                      className="w-full px-4 py-2.5 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota bg-white text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={isUpdatingProfile}
+                  className="w-full bg-retro-terracota/10 hover:bg-retro-terracota/20 text-retro-terracota border border-retro-terracota/20 font-black py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 text-xs transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isUpdatingProfile ? 'Guardando...' : 'Guardar Datos Personales'}</span>
+                </motion.button>
+              </form>
+
+              {/* Seccion 2: Cambio de Contrasena */}
+              <form onSubmit={handleUpdatePassword} className="space-y-4 pt-6 text-left">
+                <h4 className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-widest mb-2">Cambiar Contraseña</h4>
+                
+                {passwordSuccess && (
+                  <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-800 p-2.5 rounded-2xl text-[11px] font-black flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>¡Contraseña actualizada exitosamente!</span>
+                  </div>
+                )}
+                {passwordError && (
+                  <div className="bg-rose-50 border-2 border-rose-500 text-rose-800 p-2.5 rounded-2xl text-[11px] font-black flex items-center text-left">
+                    <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0 text-rose-600" />
+                    <span>{passwordError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-retro-terracota uppercase tracking-wider mb-1">Nueva Contraseña</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Mínimo 6 caracteres"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota bg-white text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-retro-terracota uppercase tracking-wider mb-1">Confirmar Contraseña</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Repite la contraseña"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota bg-white text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="w-full bg-retro-terracota hover:bg-retro-terracota/90 text-white font-extrabold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 text-xs transition-colors shadow-md shadow-retro-terracota/10 disabled:bg-retro-terracota/40"
+                >
+                  <span>{isUpdatingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}</span>
+                </motion.button>
+              </form>
+            </div>
             
             {/* CARD 3: Formulario Dirección Guadalajara */}
             <div className="glass-card p-6 rounded-3xl relative">
@@ -423,9 +625,7 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                       onChange={(e) => setMunicipality(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota bg-white text-xs font-bold"
                     >
-                      {municipalities.map(muni => (
-                        <option key={muni} value={muni}>{muni}</option>
-                      ))}
+                      <option value="Guadalajara">Guadalajara</option>
                     </select>
                   </div>
                 </div>

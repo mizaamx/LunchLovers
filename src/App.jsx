@@ -4,10 +4,6 @@ import { MealSelectionProvider } from './context/MealSelectionContext';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import HowItWorks from './components/HowItWorks';
-import Catalog from './components/Catalog';
-import Pricing from './components/Pricing';
-import Testimonials from './components/Testimonials';
-import Contact from './components/Contact';
 import WhatsAppButton from './components/WhatsAppButton';
 import RequirePaymentGate from './components/RequirePaymentGate';
 
@@ -36,6 +32,10 @@ const lazyWithRetry = (importFn) => {
 const Dashboard = lazyWithRetry(() => import('./components/Dashboard'));
 const AdminDashboard = lazyWithRetry(() => import('./components/AdminDashboard'));
 const AIPersonalAssistant = lazyWithRetry(() => import('./components/AIPersonalAssistant'));
+const Catalog = lazyWithRetry(() => import('./components/Catalog'));
+const Pricing = lazyWithRetry(() => import('./components/Pricing'));
+const Testimonials = lazyWithRetry(() => import('./components/Testimonials'));
+const Contact = lazyWithRetry(() => import('./components/Contact'));
 
 function AppContent() {
   const [activeSection, setActiveSection] = useState('inicio');
