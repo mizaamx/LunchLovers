@@ -538,6 +538,7 @@ export function MealSelectionProvider({ children }) {
             userName: user.name || 'Cliente',
             userEmail: user.email || 'correo@gdl.com',
             weekId: weekId,
+            plan: user.plan || null,
             selectedDays: selectedDays,
             selectedMealIds: selectedMealIds, // flat list
             withCutlery: withCutlery,

@@ -65,6 +65,19 @@ const mockOrders = [
   }
 ];
 
+const getPlanCalories = (plan) => {
+  if (!plan) return 'Sin Plan';
+  const planLower = plan.toLowerCase();
+  if (planLower.includes('600')) return '600 Kcal';
+  if (planLower.includes('800')) return '800 Kcal';
+  if (planLower === 'godinez') return 'Paquete Godínez';
+  if (planLower === 'comida_diaria') return 'Comida Diaria';
+  if (planLower === 'basic') return 'Básico (Legacy)';
+  if (planLower === 'normal') return 'Normal (Legacy)';
+  if (planLower === 'pro') return 'Pro (Legacy)';
+  return plan;
+};
+
 export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'users', 'dishes', 'weeklyMenu'
@@ -82,6 +95,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [dishToDelete, setDishToDelete] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [orderToDelete, setOrderToDelete] = useState(null);
+  const [selectedOrderForMealsModal, setSelectedOrderForMealsModal] = useState(null);
 
   // Password change modal state
   const [userForPasswordChange, setUserForPasswordChange] = useState(null);
@@ -183,11 +197,11 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                 ? doc.data().deliveryDate.toDate().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' })
                 : 'Lunes programado',
             }));
-            setOrders(list.length > 0 ? list : mockOrders);
+            setOrders(db ? list : (list.length > 0 ? list : mockOrders));
             setLoading(false);
           }, (err) => {
             console.error('Error fetching orders:', err);
-            setOrders(mockOrders);
+            setOrders(db ? [] : mockOrders);
             setLoading(false);
           });
 
@@ -208,10 +222,10 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
               isAdmin: doc.data().isAdmin || false,
               limitOneOfEach: doc.data().limitOneOfEach || false,
             }));
-            setUsers(list.length > 0 ? list : mockUsers);
+            setUsers(db ? list : (list.length > 0 ? list : mockUsers));
           }, (err) => {
             console.error('Error fetching users:', err);
-            setUsers(mockUsers);
+            setUsers(db ? [] : mockUsers);
           });
 
           // 2.5. Listen to UserSelections
@@ -324,6 +338,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
             userName: displayOrder.userName,
             userEmail: displayOrder.userEmail,
             weekId: displayOrder.weekId,
+            plan: displayOrder.plan || null,
             selectedDays: displayOrder.selectedDays,
             selectedMealIds: displayOrder.mealIds,
             status: newStatus,
@@ -865,6 +880,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         weekId: sel.weekId,
         userName,
         userEmail,
+        plan: matchingOrder?.plan || selUser?.plan || null,
         selectedDays: sel.selectedDays || {},
         mealIds: sel.selectedDishes || [],
         address: addressStr,
@@ -889,6 +905,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         weekId: order.weekId || null,
         userName: order.userName || order.clientName || 'Cliente',
         userEmail: order.userEmail || order.clientEmail || 'correo@gdl.com',
+        plan: order.plan || usersMap[order.userId]?.plan || null,
         selectedDays: order.selectedDays || {},
         mealIds: order.selectedMealIds || order.mealIds || order.selectedMeals || [],
         address: order.address || 'Sin dirección',
@@ -1143,76 +1160,30 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         <td className="p-4 sm:p-5 align-top">
                           <div className="font-extrabold text-slate-200">{order.userName}</div>
                           <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{order.userEmail}</div>
+                          {order.plan && (
+                            <div className="mt-1.5">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase border tracking-wider ${
+                                order.plan.includes('600')
+                                  ? 'bg-amber-950/40 text-amber-300 border-amber-800/40'
+                                  : order.plan.includes('800')
+                                  ? 'bg-retro-terracota/20 text-retro-terracota border-retro-terracota/30'
+                                  : 'bg-slate-900 text-slate-400 border-slate-800'
+                              }`}>
+                                {getPlanCalories(order.plan)}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-4 sm:p-5 align-top font-sans">
-                          {order.selectedDays && Object.keys(order.selectedDays).length > 0 ? (
-                            <div className="space-y-2.5">
-                              {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map((day) => {
-                                const dayObj = order.selectedDays[day] || {};
-                                const slots = Object.keys(dayObj).filter(slot => dayObj[slot] !== null && dayObj[slot] !== '');
-                                if (slots.length === 0) return null;
-                                
-                                const formatDay = (d) => {
-                                  const map = { lunes: 'Lun', martes: 'Mar', miercoles: 'Mié', jueves: 'Jue', viernes: 'Vie' };
-                                  return map[d] || d;
-                                };
-                                const formatSlot = (s) => {
-                                  const map = { comida: 'Almuerzo', cena: 'Cena', snack: 'Snack' };
-                                  return map[s] || s;
-                                };
-                                
-                                return (
-                                  <div key={day} className="border-b border-slate-800/40 pb-1.5 last:border-0 last:pb-0">
-                                    <span className="text-[9px] font-black text-retro-mostaza uppercase tracking-wider block mb-1">
-                                      {formatDay(day)}
-                                    </span>
-                                    <div className="space-y-1">
-                                      {slots.map(slot => {
-                                        const dishId = dayObj[slot];
-                                        const dish = dishesMap[dishId];
-                                        return dish ? (
-                                          <div key={slot} className="flex items-center space-x-1.5">
-                                            <img
-                                              src={dish.image || '/keto_salmon.webp'}
-                                              alt={dish.name}
-                                              className="w-5 h-5 object-cover rounded border border-slate-800"
-                                              onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
-                                            />
-                                            <span className="text-[10px] text-slate-300 font-bold leading-tight">
-                                              {dish.name} <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">({formatSlot(slot)})</span>
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span key={slot} className="text-[9px] text-slate-500 block">
-                                            ID: {dishId} ({formatSlot(slot)})
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : order.mealIds && Array.isArray(order.mealIds) && order.mealIds.length > 0 ? (
-                            <div className="space-y-1">
-                              {order.mealIds.map((mealId, idx) => {
-                                const dish = dishesMap[mealId];
-                                return dish ? (
-                                  <div key={idx} className="flex items-center space-x-2">
-                                    <img
-                                      src={dish.image || '/keto_salmon.webp'}
-                                      alt={dish.name}
-                                      className="w-5 h-5 object-cover rounded border border-slate-800"
-                                      onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
-                                    />
-                                    <span className="text-[10.5px] text-slate-300 font-bold leading-tight">{dish.name}</span>
-                                  </div>
-                                ) : (
-                                  <span key={idx} className="text-[9px] text-slate-500 block">ID: {mealId}</span>
-                                );
-                              })}
-                            </div>
+                          {(order.selectedDays && Object.keys(order.selectedDays).length > 0) || (order.mealIds && order.mealIds.length > 0) ? (
+                            <button
+                              onClick={() => setSelectedOrderForMealsModal(order)}
+                              className="px-3.5 py-1.5 bg-slate-950 hover:bg-slate-900 text-slate-350 hover:text-slate-100 rounded-xl font-black text-[10px] tracking-wider uppercase transition-colors border border-slate-800 hover:border-slate-700 shadow-md flex items-center space-x-1"
+                            >
+                              <Utensils className="w-3.5 h-3.5 text-retro-terracota" />
+                              <span>Ver Platillos</span>
+                            </button>
                           ) : (
                             <span className="text-[10px] text-slate-650 font-bold italic">Sin selección</span>
                           )}
@@ -2240,6 +2211,160 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* VIEW MEALS DETAILS MODAL */}
+        {selectedOrderForMealsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+              onClick={() => setSelectedOrderForMealsModal(null)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full relative z-10 text-left shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="absolute top-[-30px] right-[-30px] w-20 h-20 bg-retro-terracota/10 rounded-full blur-xl pointer-events-none" />
+              
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-retro-crema flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-retro-mostaza" />
+                    Platillos Seleccionados
+                  </h3>
+                  <p className="text-xs font-black text-slate-200 mt-1">
+                    {selectedOrderForMealsModal.userName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold">
+                    {selectedOrderForMealsModal.userEmail}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setSelectedOrderForMealsModal(null)}
+                  className="text-slate-400 hover:text-slate-200 text-lg font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Calorie plan info */}
+              <div className="mb-4 p-3 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center text-xs font-bold">
+                <span className="text-slate-400 font-bold">Plan contratado:</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border tracking-wider ${
+                  selectedOrderForMealsModal.plan?.includes('600')
+                    ? 'bg-amber-950/40 text-amber-300 border-amber-800/40'
+                    : selectedOrderForMealsModal.plan?.includes('800')
+                    ? 'bg-retro-terracota/20 text-retro-terracota border-retro-terracota/30'
+                    : 'bg-slate-900 text-slate-350 border-slate-850'
+                }`}>
+                  {getPlanCalories(selectedOrderForMealsModal.plan)}
+                </span>
+              </div>
+
+              {selectedOrderForMealsModal.weekId && (
+                <div className="mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Semana de Entrega: <span className="text-retro-crema font-extrabold">{selectedOrderForMealsModal.weekId}</span>
+                </div>
+              )}
+
+              <div className="space-y-4 py-2 border-t border-b border-slate-850 max-h-[50vh] overflow-y-auto">
+                {selectedOrderForMealsModal.selectedDays && Object.keys(selectedOrderForMealsModal.selectedDays).length > 0 ? (
+                  <div className="space-y-3">
+                    {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map((day) => {
+                      const dayObj = selectedOrderForMealsModal.selectedDays[day] || {};
+                      const slots = Object.keys(dayObj).filter(slot => dayObj[slot] !== null && dayObj[slot] !== '');
+                      if (slots.length === 0) return null;
+                      
+                      const formatDay = (d) => {
+                        const map = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' };
+                        return map[d] || d;
+                      };
+                      const formatSlot = (s) => {
+                        const map = { comida: 'Almuerzo', cena: 'Cena', snack: 'Snack' };
+                        return map[s] || s;
+                      };
+                      
+                      return (
+                        <div key={day} className="p-3 bg-slate-950/50 rounded-xl border border-slate-850">
+                          <span className="text-[10px] font-black text-retro-mostaza uppercase tracking-wider block mb-2 border-b border-slate-850 pb-1">
+                            {formatDay(day)}
+                          </span>
+                          <div className="space-y-2">
+                            {slots.map(slot => {
+                              const dishId = dayObj[slot];
+                              const dish = dishesMap[dishId];
+                              return dish ? (
+                                <div key={slot} className="flex items-center space-x-2.5">
+                                  <img
+                                    src={dish.image || '/keto_salmon.webp'}
+                                    alt={dish.name}
+                                    className="w-8 h-8 object-cover rounded-lg border border-slate-800"
+                                    onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                                  />
+                                  <div>
+                                    <span className="text-[11px] text-slate-200 font-extrabold block leading-tight">
+                                      {dish.name}
+                                    </span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-0.5 block">
+                                      {formatSlot(slot)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div key={slot} className="text-[10px] text-slate-500 italic">
+                                  Platillo ID: {dishId} ({formatSlot(slot)})
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : selectedOrderForMealsModal.mealIds && Array.isArray(selectedOrderForMealsModal.mealIds) && selectedOrderForMealsModal.mealIds.length > 0 ? (
+                  <div className="space-y-2.5 font-sans">
+                    {selectedOrderForMealsModal.mealIds.map((mealId, idx) => {
+                      const dish = dishesMap[mealId];
+                      return dish ? (
+                        <div key={idx} className="flex items-center space-x-3 p-2.5 bg-slate-950/50 rounded-xl border border-slate-850">
+                          <img
+                            src={dish.image || '/keto_salmon.webp'}
+                            alt={dish.name}
+                            className="w-8 h-8 object-cover rounded-lg border border-slate-800"
+                            onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                          />
+                          <span className="text-[11px] text-slate-200 font-extrabold leading-tight">{dish.name}</span>
+                        </div>
+                      ) : (
+                        <div key={idx} className="text-[10px] text-slate-500 italic p-2.5 bg-slate-950/50 rounded-xl border border-slate-850">
+                          Platillo ID: {mealId}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-slate-500 font-bold italic">
+                    Sin selección registrada
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForMealsModal(null)}
+                  className="px-5 py-2 bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-350 hover:text-white rounded-xl font-bold text-xs transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
