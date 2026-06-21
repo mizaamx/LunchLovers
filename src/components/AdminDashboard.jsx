@@ -30,6 +30,7 @@ import {
   query, 
   orderBy, 
   doc, 
+  getDoc, 
   setDoc, 
   addDoc, 
   deleteDoc, 
@@ -72,6 +73,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [dishes, setDishes] = useState([]);
+  const [userSelections, setUserSelections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -159,6 +161,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     let unsubscribeOrders = () => {};
     let unsubscribeUsers = () => {};
     let unsubscribeDishes = () => {};
+    let unsubscribeSelections = () => {};
 
     const setupListeners = async () => {
       setLoading(true);
@@ -196,6 +199,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
               name: doc.data().name || 'Cliente',
               email: doc.data().email || 'correo@gdl.com',
               phone: doc.data().phone || 'Sin teléfono',
+              address: doc.data().address || null,
               plan: doc.data().plan || null,
               status: doc.data().status || 'active',
               paymentStatus: doc.data().paymentStatus || 'pending',
@@ -208,6 +212,18 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
           }, (err) => {
             console.error('Error fetching users:', err);
             setUsers(mockUsers);
+          });
+
+          // 2.5. Listen to UserSelections
+          const selectionsQuery = query(collection(db, 'UserSelections'));
+          unsubscribeSelections = onSnapshot(selectionsQuery, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setUserSelections(list);
+          }, (err) => {
+            console.error('Error fetching selections:', err);
           });
 
           // 3. Listen to Dishes
@@ -237,6 +253,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       unsubscribeOrders();
       unsubscribeUsers();
       unsubscribeDishes();
+      unsubscribeSelections();
     };
   }, []);
 
@@ -297,13 +314,37 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       if (db) {
+        const displayOrder = displayOrders.find(o => o.id === orderId);
         const orderRef = doc(db, 'orders', orderId);
-        await setDoc(orderRef, { status: newStatus }, { merge: true });
+        const orderSnap = await getDoc(orderRef);
+        
+        if (!orderSnap.exists() && displayOrder && displayOrder.isSelectionOrder) {
+          await setDoc(orderRef, {
+            userId: displayOrder.userId,
+            userName: displayOrder.userName,
+            userEmail: displayOrder.userEmail,
+            weekId: displayOrder.weekId,
+            selectedDays: displayOrder.selectedDays,
+            selectedMealIds: displayOrder.mealIds,
+            status: newStatus,
+            createdAt: new Date().toISOString(),
+            deliveryAddress: {
+              street: displayOrder.rawAddress?.street || '',
+              colony: displayOrder.rawAddress?.colony || '',
+              municipality: displayOrder.rawAddress?.municipality || 'Guadalajara',
+              zipCode: displayOrder.rawAddress?.zipCode || '',
+              instructions: displayOrder.rawAddress?.instructions || ''
+            }
+          });
+        } else {
+          await setDoc(orderRef, { status: newStatus }, { merge: true });
+        }
         showSuccess('Estatus del pedido actualizado.');
       } else {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
       }
     } catch (err) {
+      console.error(err);
       showError('Error al actualizar estatus.');
     }
   };
@@ -694,6 +735,9 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     try {
       if (db) {
         await deleteDoc(doc(db, 'orders', orderToDelete.id));
+        if (orderToDelete.isSelectionOrder && orderToDelete.selectionDocId) {
+          await deleteDoc(doc(db, 'UserSelections', orderToDelete.selectionDocId));
+        }
         showSuccess(`Pedido "${orderToDelete.id}" eliminado exitosamente.`);
       } else {
         setOrders(prev => prev.filter(o => o.id !== orderToDelete.id));
@@ -778,6 +822,84 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     });
     return map;
   }, [dishes]);
+
+  // Compute combined orders and selections in real-time
+  const displayOrders = React.useMemo(() => {
+    const usersMap = {};
+    users.forEach(u => {
+      usersMap[u.id] = u;
+    });
+
+    const list = [];
+    const processedSelectionKeys = new Set();
+
+    // 1. Process all UserSelections as weekly orders
+    userSelections.forEach(sel => {
+      const selUser = usersMap[sel.userId];
+      const userName = selUser?.name || 'Cliente';
+      const userEmail = selUser?.email || 'correo@gdl.com';
+      
+      let addressStr = 'Sin dirección';
+      if (selUser?.address) {
+        const addr = selUser.address;
+        addressStr = `${addr.street || ''}, ${addr.colony || ''}, ${addr.municipality || 'Guadalajara'} (${addr.zipCode || ''}). ${addr.instructions || ''}`;
+      } else if (sel.deliveryAddress) {
+        const addr = sel.deliveryAddress;
+        addressStr = `${addr.street || ''}, ${addr.colony || ''}, ${addr.municipality || 'Guadalajara'} (${addr.zipCode || ''}). ${addr.instructions || ''}`;
+      }
+
+      // Find if there is an order document in the orders collection for this user and week
+      const matchingOrder = orders.find(o => o.userId === sel.userId && o.weekId === sel.weekId);
+      const status = matchingOrder ? matchingOrder.status : 'pendiente';
+      const orderId = matchingOrder ? matchingOrder.id : sel.id;
+
+      if (matchingOrder) {
+        processedSelectionKeys.add(matchingOrder.id);
+      }
+
+      list.push({
+        id: orderId,
+        isSelectionOrder: true,
+        selectionDocId: sel.id,
+        userId: sel.userId,
+        weekId: sel.weekId,
+        userName,
+        userEmail,
+        selectedDays: sel.selectedDays || {},
+        mealIds: sel.selectedDishes || [],
+        address: addressStr,
+        rawAddress: selUser?.address || sel.deliveryAddress || null,
+        status: status,
+        createdAt: sel.timestamp?.toDate ? sel.timestamp.toDate().toISOString() : new Date().toISOString()
+      });
+    });
+
+    // 2. Process remaining orders (like new subscription orders without weekly selections)
+    orders.forEach(order => {
+      if (processedSelectionKeys.has(order.id)) return;
+      
+      if (order.weekId && list.some(l => l.userId === order.userId && l.weekId === order.weekId)) {
+        return;
+      }
+
+      list.push({
+        id: order.id,
+        isSelectionOrder: false,
+        userId: order.userId,
+        weekId: order.weekId || null,
+        userName: order.userName || order.clientName || 'Cliente',
+        userEmail: order.userEmail || order.clientEmail || 'correo@gdl.com',
+        selectedDays: order.selectedDays || {},
+        mealIds: order.selectedMealIds || order.mealIds || order.selectedMeals || [],
+        address: order.address || 'Sin dirección',
+        status: order.status || 'pendiente',
+        createdAt: order.createdAt
+      });
+    });
+
+    // Sort by createdAt descending
+    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [orders, userSelections, users]);
 
   // Badge calculations
   const stats = {
@@ -1007,7 +1129,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                     </tr>
                   </thead>
 <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {orders.map((order) => (
+                    {displayOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="p-4 sm:p-5 font-black text-retro-crema align-top whitespace-nowrap">
                           <div>{order.id}</div>
