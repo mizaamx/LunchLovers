@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 import RequirePaymentGate from './RequirePaymentGate';
 
-const categories = ['Todos', 'Platillos', 'Snacks', 'Bebidas'];
+
 
 // Simulated generic dishes for new/unregistered visitors
 const MOCK_GENERIC_DISHES = [
@@ -73,7 +73,6 @@ const getDishTags = (dish) => {
 };
 
 export default function Catalog() {
-  const [activeFilter, setActiveFilter] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDay, setActiveDay] = useState('lunes');
   const [activeSlot, setActiveSlot] = useState('comida');
@@ -111,8 +110,45 @@ export default function Catalog() {
     loading,
     isSelectionOpen,
     weekId,
-    getDishesForDay
+    getDishesForDay,
+    isDayBlocked
   } = useMealSelection();
+
+  // Dynamically compute slots allowed by the user's plan
+  const visibleSlots = useMemo(() => {
+    if (!user || !plan) return [];
+    const limits = {
+      cal800_1: 1,
+      cal600_1: 1,
+      comida_diaria: 1,
+      godinez: 1,
+      basic: 1,
+      cal800_2: 2,
+      cal600_2: 2,
+      normal: 2,
+      cal800_3: 3,
+      cal600_3: 3,
+      pro: 3,
+    };
+    const maxMeals = limits[plan] || 1;
+    const allSlots = [
+      { id: 'comida', name: 'Platillo 1', emoji: '🍽️' },
+      { id: 'cena', name: 'Platillo 2', emoji: '🍽️' },
+      { id: 'snack', name: 'Platillo 3', emoji: '🍽️' },
+      { id: 'bebida', name: 'Platillo 4', emoji: '🍽️' }
+    ];
+    return allSlots.slice(0, maxMeals);
+  }, [user, plan]);
+
+  useEffect(() => {
+    if (visibleSlots.length > 0) {
+      if (!visibleSlots.some(s => s.id === activeSlot)) {
+        setActiveSlot(visibleSlots[0].id);
+      }
+    } else {
+      setActiveSlot('comida');
+    }
+  }, [visibleSlots, activeSlot]);
 
   // Helper maps for Spanish localized names
   const formatDayName = (day) => {
@@ -128,25 +164,23 @@ export default function Catalog() {
 
   const formatSlotName = (slot) => {
     const map = {
-      comida: 'Almuerzo',
-      cena: 'Cena',
-      snack: 'Snack'
+      comida: 'Platillo 1',
+      cena: 'Platillo 2',
+      snack: 'Platillo 3',
+      bebida: 'Platillo 4'
     };
+    const limits = {
+      cal800_1: 1,
+      cal600_1: 1,
+      comida_diaria: 1,
+      godinez: 1,
+      basic: 1,
+    };
+    if (plan && limits[plan] === 1 && slot === 'comida') {
+      return 'Platillo';
+    }
     return map[slot] || slot;
   };
-
-  const isSlotLocked = useCallback((slotId) => {
-    if (!user) return false; // Demo mode for guests
-    if (!plan) return false; // Demo mode for registered no plan
-    
-    if (['cal800_1', 'cal600_1', 'comida_diaria', 'godinez', 'basic'].includes(plan)) {
-      return slotId !== 'comida';
-    }
-    if (['cal800_2', 'cal600_2', 'normal'].includes(plan)) {
-      return slotId === 'snack' || slotId === 'bebida';
-    }
-    return false; // cal800_3, cal600_3, pro: all unlocked
-  }, [user, plan]);
 
   // Handle assigning a dish to the active slot
   const handleAssignDish = useCallback((dishId) => {
@@ -183,35 +217,25 @@ export default function Catalog() {
     return scheduled;
   }, [selectedDays]);
 
-  // Use Firestore active menu filtered by day for registered users, otherwise generic simulated menu
+  // Use Firestore active menu filtered by day, fallback to generic simulated menu if not loaded yet
   const displayDishes = useMemo(() => {
-    return user ? getDishesForDay(activeDay) : MOCK_GENERIC_DISHES;
-  }, [user, getDishesForDay, activeDay]);
+    const weeklyDishes = getDishesForDay(activeDay);
+    return weeklyDishes.length > 0 ? weeklyDishes : MOCK_GENERIC_DISHES;
+  }, [getDishesForDay, activeDay]);
 
   const filteredDishes = useMemo(() => {
     return displayDishes.filter((dish) => {
-      let matchesFilter = false;
-      const cat = (dish.category || '').toLowerCase();
-      if (activeFilter === 'Todos') {
-        matchesFilter = true;
-      } else if (activeFilter === 'Platillos' && (cat === 'platillo' || cat === 'comida' || cat === 'cena' || !cat)) {
-        matchesFilter = true;
-      } else if (activeFilter === 'Snacks' && (cat === 'snack' || cat === 'snacks')) {
-        matchesFilter = true;
-      } else if (activeFilter === 'Bebidas' && (cat === 'bebida' || cat === 'bebidas')) {
-        matchesFilter = true;
-      }
       const matchesSearch = (dish.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesFilter && matchesSearch;
+      return matchesSearch;
     });
-  }, [activeFilter, searchQuery, displayDishes]);
+  }, [searchQuery, displayDishes]);
 
   return (
     <RequirePaymentGate>
       <section 
         id="catalogo" 
       className={`py-24 bg-retro-crema/20 relative overflow-hidden transition-all ${
-        user && plan ? 'pb-32' : ''
+        user && !user.isAdmin && plan ? 'pb-32' : ''
       }`}
     >
       {/* Decorative Background Glows */}
@@ -350,12 +374,6 @@ export default function Catalog() {
                   </button>
                 </div>
               </div>
-
-              {/* Costo de Envío Pill */}
-              <div className="px-4 py-2 bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Envío: ${shippingCost.toFixed(2)} MXN</span>
-              </div>
             </div>
           </div>
         )}
@@ -368,6 +386,7 @@ export default function Catalog() {
               const isSelected = activeDay === day;
               const daySchedule = selectedDays[day] || {};
               const scheduledCount = Object.values(daySchedule).filter(Boolean).length;
+              const blocked = isDayBlocked(day);
               
               return (
                 <button
@@ -379,8 +398,9 @@ export default function Catalog() {
                       : 'bg-white hover:bg-retro-crema/40 text-retro-terracota border border-retro-terracota/10 hover:border-retro-terracota/30'
                   }`}
                 >
-                  <span className="text-[10px] font-black uppercase tracking-wider opacity-75">
+                  <span className="text-[10px] font-black uppercase tracking-wider opacity-75 flex items-center gap-1">
                     {day === 'miercoles' ? 'Mié' : day.substring(0, 3)}
+                    {blocked && <Lock className="w-2.5 h-2.5 text-stone-500/70" />}
                   </span>
                   <span className="text-sm font-black mt-0.5 capitalize">{day === 'miercoles' ? 'Miércoles' : day}</span>
                   
@@ -402,33 +422,28 @@ export default function Catalog() {
           </div>
 
           {/* Slot Selector Tabs */}
-          <div className="flex items-center justify-center gap-3 mt-6">
-            {[
-              { id: 'comida', name: 'Almuerzo', emoji: '☀️' },
-              { id: 'cena', name: 'Cena', emoji: '🌙' },
-              { id: 'snack', name: 'Snack', emoji: '🍎' },
-              { id: 'bebida', name: 'Bebida', emoji: '🥤' }
-            ].map((slot) => {
-              const isSelected = activeSlot === slot.id;
-              const locked = isSlotLocked(slot.id);
-              
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => setActiveSlot(slot.id)}
-                  className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all duration-300 border ${
-                    isSelected
-                      ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
-                      : 'bg-white hover:bg-retro-crema/20 text-retro-terracota border border-retro-terracota/10'
-                  } ${locked ? 'opacity-65 hover:opacity-85' : ''}`}
-                >
-                  <span>{slot.emoji}</span>
-                  <span>{slot.name}</span>
-                  {locked && <Lock className="w-3.5 h-3.5 text-retro-terracota/60 ml-1" />}
-                </button>
-              );
-            })}
-          </div>
+          {visibleSlots.length > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-6">
+              {visibleSlots.map((slot) => {
+                const isSelected = activeSlot === slot.id;
+                
+                return (
+                  <button
+                    key={slot.id}
+                    onClick={() => setActiveSlot(slot.id)}
+                    className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all duration-300 border ${
+                      isSelected
+                        ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
+                        : 'bg-white hover:bg-retro-crema/20 text-retro-terracota border border-retro-terracota/10 hover:border-retro-terracota/30'
+                    }`}
+                  >
+                    <span>{slot.emoji}</span>
+                    <span>{slot.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* CTA banner when registered user does not have a subscription */}
@@ -467,50 +482,10 @@ export default function Catalog() {
           </div>
         )}
 
-        {/* Filter buttons */}
-        <div className="flex flex-wrap items-center gap-2 mb-10 pb-4 border-b border-retro-terracota/10">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveFilter(category)}
-              className={`px-5 py-2 rounded-full text-xs font-black transition-all duration-200 border ${
-                activeFilter === category
-                  ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
-                  : 'bg-white hover:bg-retro-crema text-retro-terracota border border-retro-terracota/20 hover:border-retro-terracota/40'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+
 
         {/* Catalog Content Area */}
-        {isSlotLocked(activeSlot) ? (
-          /* Locked Slot Upselling Screen */
-          <div className="py-16 text-center max-w-lg mx-auto bg-white/60 backdrop-blur-md border border-dashed border-retro-terracota/20 rounded-3xl p-8 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-retro-terracota/10 text-retro-terracota flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-6 h-6 stroke-[2.5]" />
-            </div>
-            <h3 className="text-lg font-black text-retro-terracota">Horario Bloqueado</h3>
-            <p className="text-xs text-retro-terracota/70 font-bold mt-2 leading-relaxed">
-              Tu plan de suscripción actual no incluye este horario de comida. Actualiza tu plan a uno superior para programar comidas adicionales para tu semana.
-            </p>
-            <button
-              onClick={() => {
-                const el = document.getElementById('pricing');
-                if (el) {
-                  const offset = 80;
-                  const top = el.getBoundingClientRect().top + window.scrollY - offset;
-                  window.scrollTo({ top, behavior: 'smooth' });
-                }
-              }}
-              className="mt-6 inline-flex items-center space-x-2 bg-retro-terracota hover:bg-retro-terracota/90 text-white font-extrabold text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition-all shadow-md shadow-retro-terracota/10"
-            >
-              <span>Mejorar Plan de Suscripción</span>
-              <Sparkles className="w-4 h-4 text-retro-mostaza animate-pulse" />
-            </button>
-          </div>
-        ) : loading && user ? (
+        {loading && user ? (
           /* Loading Dishes Indicator (Only for logged in users fetching from Firestore) */
           <div className="py-16 text-center">
             <div className="w-8 h-8 border-4 border-retro-crema border-t-retro-terracota rounded-full animate-spin mx-auto mb-3" />
@@ -630,14 +605,14 @@ export default function Catalog() {
                               Elegir
                             </button>
                           ) : isSelectionOpen ? (
-                            isAccepted ? (
-                              isSelectedForSlot && (
-                                <span className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-250">
-                                  <CheckCircle className="w-3.5 h-3.5 animate-pulse" />
-                                  <span>Elegido</span>
-                                </span>
-                              )
-                            ) : isSelectedForSlot ? (
+                             isAccepted ? (
+                               isSelectedForSlot && (
+                                 <span className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-250">
+                                   <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                   <span>Elegido</span>
+                                 </span>
+                               )
+                             ) : isSelectedForSlot ? (
                               <div className="flex items-center space-x-2">
                                 <button
                                   onClick={() => removeDishFromSlot(activeDay, activeSlot)}
@@ -693,7 +668,7 @@ export default function Catalog() {
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* FLOATING SELECTION BAR */}
-      {user && plan && (
+      {user && !user.isAdmin && plan && !isAccepted && (
         <div className="fixed bottom-6 inset-x-4 max-w-4xl mx-auto z-45 font-sans animate-fade-in-up">
           <div className="bg-white/90 backdrop-blur-md border border-retro-terracota/15 p-4 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
             {/* Left Info: Selections count and days progress */}
@@ -820,10 +795,6 @@ export default function Catalog() {
                 <div className="flex items-center justify-between border-t border-retro-terracota/5 pt-2 text-[10.5px]">
                   <span>Cubiertos incluidos:</span>
                   <span className="font-black text-retro-terracota">{withCutlery ? 'Sí' : 'No'}</span>
-                </div>
-                <div className="flex items-center justify-between text-[10.5px]">
-                  <span>Costo de envío estimado:</span>
-                  <span className="font-black text-retro-terracota">${shippingCost.toFixed(2)} MXN</span>
                 </div>
               </div>
             </div>
@@ -976,12 +947,12 @@ export default function Catalog() {
                   ) : isSelectionOpen ? (
                     isAccepted ? (
                       selectedDays[activeDay]?.[activeSlot] === selectedDishForModal.id ? (
-                        <div className="text-center py-2.5 text-xs font-black text-emerald-700 uppercase tracking-widest border border-dashed border-emerald-300 bg-emerald-50/50 rounded-xl font-sans flex items-center justify-center space-x-1.5">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Platillo Elegido y Confirmado</span>
+                        <div className="text-center py-2.5 text-xs font-black text-emerald-800 uppercase tracking-widest border border-emerald-255 bg-emerald-50 rounded-xl font-sans flex items-center justify-center space-x-1.5">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Elegido (Confirmado)</span>
                         </div>
                       ) : (
-                        <div className="text-center py-2.5 text-xs font-black text-retro-terracota/50 uppercase tracking-widest border border-dashed border-retro-terracota/20 rounded-xl font-sans">
+                        <div className="text-center py-2.5 text-xs font-black text-stone-400 uppercase tracking-widest border border-dashed border-stone-200 rounded-xl font-sans">
                           Selección Confirmada
                         </div>
                       )

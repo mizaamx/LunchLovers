@@ -169,7 +169,7 @@ function AppContent() {
       {/* Floating CTA WhatsApp Widget (Only visible if not on Admin Panel) */}
       {currentPage !== 'admin' && <WhatsAppButton />}
 
-      {/* Floating AI Nutrition Assistant (Only visible if not on Admin Panel) */}
+      {/* Floating AI Assistant (Only visible if not on Admin Panel) */}
       {currentPage !== 'admin' && (
         <Suspense fallback={null}>
           <AIPersonalAssistant />

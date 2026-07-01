@@ -32,11 +32,11 @@ export default function Pricing() {
       if (mealsPerDay === 1) {
         return {
           id: 'cal800_1',
-          name: 'Plan 800 Kcal (1 Comida)',
+          name: 'Plan Hearty Lovers (1 Comida)',
           price: 800,
           mealsCount: 5,
           features: [
-            '5 comidas de 800 Kcal semanales (Lun a Vie)',
+            '5 platos completos semanales (Lunes a Viernes)',
             'Menú rotativo balanceado',
             'Empaques compostables biodegradables',
             'Entrega diaria directa en Guadalajara',
@@ -46,31 +46,31 @@ export default function Pricing() {
       } else if (mealsPerDay === 2) {
         return {
           id: 'cal800_2',
-          name: 'Plan 800 Kcal (2 Comidas)',
+          name: 'Plan Hearty Lovers (2 Comidas)',
           price: 1350,
           mealsCount: 10,
           features: [
-            '10 comidas de 800 Kcal semanales (Almuerzo + Cena, Lun a Vie)',
+            '10 platos completos semanales (Almuerzo + Cena, Lun a Vie)',
             'Menú personalizado según tus metas',
             'Entrega express preferente',
-            'Consulta de valoración con nutriólogo',
-            'Costo de envío: $20 MXN',
+            'Ajuste de porciones personalizado',
+            'Envío a domicilio incluido',
             'Modificaciones al menú sin costo',
           ]
         };
       } else {
         return {
           id: 'cal800_3',
-          name: 'Plan 800 Kcal (3 Comidas)',
+          name: 'Plan Hearty Lovers (3 Comidas)',
           price: 1800,
           mealsCount: 15,
           features: [
-            '15 comidas de 800 Kcal semanales (Almuerzo + Cena + Snack, Lun a Vie)',
+            '15 platos completos semanales (Almuerzo + Cena + Snack, Lun a Vie)',
             'Ajuste exacto de macronutrientes',
             'Asesoría personalizada 24/7',
             'Entregas express prioritarias',
             'Ingredientes premium seleccionados',
-            'Costo de envío: $20 MXN',
+            'Envío a domicilio incluido',
           ]
         };
       }
@@ -79,11 +79,11 @@ export default function Pricing() {
       if (mealsPerDay === 1) {
         return {
           id: 'cal600_1',
-          name: 'Plan 600 Kcal (1 Comida)',
+          name: 'Plan Light Lovers (1 Comida)',
           price: 650,
           mealsCount: 5,
           features: [
-            '5 comidas de 600 Kcal semanales (Lun a Vie)',
+            '5 platos ligeros y balanceados semanales (Lunes a Viernes)',
             'Menú rotativo balanceado y ligero',
             'Empaques compostables biodegradables',
             'Entrega diaria directa en Guadalajara',
@@ -93,31 +93,31 @@ export default function Pricing() {
       } else if (mealsPerDay === 2) {
         return {
           id: 'cal600_2',
-          name: 'Plan 600 Kcal (2 Comidas)',
+          name: 'Plan Light Lovers (2 Comidas)',
           price: 1250,
           mealsCount: 10,
           features: [
-            '10 comidas de 600 Kcal semanales (Almuerzo + Cena, Lun a Vie)',
+            '10 platos ligeros y balanceados semanales (Almuerzo + Cena, Lun a Vie)',
             'Menú personalizado para déficit calórico',
             'Entrega express preferente',
-            'Consulta de valoración con nutriólogo',
-            'Costo de envío: $20 MXN',
+            'Ajuste de porciones personalizado',
+            'Envío a domicilio incluido',
             'Modificaciones al menú sin costo',
           ]
         };
       } else {
         return {
           id: 'cal600_3',
-          name: 'Plan 600 Kcal (3 Comidas)',
+          name: 'Plan Light Lovers (3 Comidas)',
           price: 1700,
           mealsCount: 15,
           features: [
-            '15 comidas de 600 Kcal semanales (Almuerzo + Cena + Snack, Lun a Vie)',
+            '15 platos ligeros y balanceados semanales (Almuerzo + Cena + Snack, Lun a Vie)',
             'Control de macronutrientes estricto',
-            'Asesoría personalizada con nutriólogo 24/7',
+            'Asesoría personalizada 24/7',
             'Entregas express prioritarias',
             'Ingredientes premium seleccionados',
-            'Costo de envío: $20 MXN',
+            'Envío a domicilio incluido',
           ]
         };
       }
@@ -319,7 +319,7 @@ export default function Pricing() {
             {/* Popular Tag */}
             <div className="absolute top-0 right-8 transform -translate-y-1/2">
               <span className="text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md text-white bg-retro-mostaza border border-retro-mostaza">
-                Plan Calórico
+                Planes Premium
               </span>
             </div>
 
@@ -331,15 +331,15 @@ export default function Pricing() {
                     <Flame className="w-6 h-6 stroke-[2.2]" />
                   </div>
                   <h3 className="text-2xl font-black text-retro-terracota font-sans tracking-tight">
-                    Plan Calórico Premium
+                    Planes Premium Lunch Lovers
                   </h3>
                   <p className="text-retro-terracota/80 text-xs font-bold mt-2 leading-relaxed">
-                    Personaliza la carga calórica y la cantidad de comidas que necesitas cada día de Lunes a Viernes.
+                    Elige el tamaño de tus porciones y la cantidad de comidas que necesitas cada día de Lunes a Viernes.
                   </p>
 
                   {/* Calorie Tier Tabs */}
                   <div className="mt-5">
-                    <span className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-wider block mb-2 font-sans">1. Selecciona Calorías</span>
+                    <span className="text-[10px] font-black text-retro-terracota/50 uppercase tracking-wider block mb-2 font-sans">1. Selecciona el Tipo de Plan</span>
                     <div className="flex rounded-xl bg-retro-crema/60 p-1 border border-retro-terracota/10 w-fit">
                       <button
                         onClick={() => setCalorieTier('800')}
@@ -349,7 +349,7 @@ export default function Pricing() {
                             : 'text-retro-terracota/70 hover:text-retro-terracota'
                         }`}
                       >
-                        800 kcal
+                        Hearty Lovers
                       </button>
                       <button
                         onClick={() => setCalorieTier('600')}
@@ -359,7 +359,7 @@ export default function Pricing() {
                             : 'text-retro-terracota/70 hover:text-retro-terracota'
                         }`}
                       >
-                        600 kcal
+                        Light Lovers
                       </button>
                     </div>
                   </div>

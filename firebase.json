@@ -64,7 +64,7 @@
         ]
       },
       {
-        "source": "**/index.html",
+        "source": "/@(catalog|dashboard|admin|index.html|)",
         "headers": [
           {
             "key": "Cache-Control",

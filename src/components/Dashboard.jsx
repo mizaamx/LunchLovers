@@ -9,16 +9,20 @@ import { updatePassword } from 'firebase/auth';
 
 export default function Dashboard({ setCurrentPage, setActiveSection }) {
   const { user, updateProfile, resendVerificationEmail } = useAuth();
-  const { selectedDays, selectedMealIds, allDishes, isAccepted } = useMealSelection();
+  const { selectedDays, selectedMealIds, allDishes, isAccepted, isDayBlocked } = useMealSelection();
+  
+  const hasEditableDays = useMemo(() => {
+    return ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].some(d => !isDayBlocked(d));
+  }, [isDayBlocked]);
   
   const getPlanDetails = (planId) => {
     const plansInfo = {
-      cal800_1: { name: 'Plan 800 Kcal (1 Comida)', price: '$800 MXN / sem' },
-      cal800_2: { name: 'Plan 800 Kcal (2 Comidas)', price: '$1,350 MXN / sem' },
-      cal800_3: { name: 'Plan 800 Kcal (3 Comidas)', price: '$1,800 MXN / sem' },
-      cal600_1: { name: 'Plan 600 Kcal (1 Comida)', price: '$650 MXN / sem' },
-      cal600_2: { name: 'Plan 600 Kcal (2 Comidas)', price: '$1,250 MXN / sem' },
-      cal600_3: { name: 'Plan 600 Kcal (3 Comidas)', price: '$1,700 MXN / sem' },
+      cal800_1: { name: 'Plan Hearty Lovers (1 Comida)', price: '$800 MXN / sem' },
+      cal800_2: { name: 'Plan Hearty Lovers (2 Comidas)', price: '$1,350 MXN / sem' },
+      cal800_3: { name: 'Plan Hearty Lovers (3 Comidas)', price: '$1,800 MXN / sem' },
+      cal600_1: { name: 'Plan Light Lovers (1 Comida)', price: '$650 MXN / sem' },
+      cal600_2: { name: 'Plan Light Lovers (2 Comidas)', price: '$1,250 MXN / sem' },
+      cal600_3: { name: 'Plan Light Lovers (3 Comidas)', price: '$1,700 MXN / sem' },
       godinez: { name: 'Paquete Godínez', price: '$750 MXN / sem' },
       comida_diaria: { name: 'Comida Diaria (Flexible)', price: '$125 MXN / comida' },
       basic: { name: 'Plan Básico', price: '$29 MXN / mes' },
@@ -141,6 +145,12 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
 
     if (!profileName.trim()) {
       setProfileError('El nombre no puede estar vacío.');
+      setIsUpdatingProfile(false);
+      return;
+    }
+
+    if (!profilePhone.trim()) {
+      setProfileError('El teléfono de contacto es requerido.');
       setIsUpdatingProfile(false);
       return;
     }
@@ -269,6 +279,23 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
           </div>
         )}
 
+        {/* Missing Phone Alert Banner */}
+        {user && (!user.phone || user.phone === 'Sin teléfono' || user.phone.trim() === '') && (
+          <div className="mb-8 p-5 bg-amber-50 border-2 border-amber-500/20 text-amber-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in text-left">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-amber-900">Teléfono de contacto requerido</h4>
+                <p className="text-[11px] font-bold text-amber-800/80 mt-0.5 leading-snug">
+                  Por favor, agrega tu número de teléfono (WhatsApp) en la sección "Mi Perfil" para que podamos contactarte y coordinar las entregas de tus platillos.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Dashboard Main Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -360,7 +387,17 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                       return map[d] || d;
                     };
                     const formatSlot = (s) => {
-                      const map = { comida: 'Almuerzo', cena: 'Cena', snack: 'Snack' };
+                      const map = { comida: 'Platillo 1', cena: 'Platillo 2', snack: 'Platillo 3', bebida: 'Platillo 4' };
+                      const limits = {
+                        cal800_1: 1,
+                        cal600_1: 1,
+                        comida_diaria: 1,
+                        godinez: 1,
+                        basic: 1,
+                      };
+                      if (user?.plan && limits[user.plan] === 1 && s === 'comida') {
+                        return 'Platillo';
+                      }
                       return map[s] || s;
                     };
                     
@@ -479,6 +516,7 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                     <label className="block text-[10px] font-black text-retro-terracota uppercase tracking-wider mb-1">Teléfono</label>
                     <input
                       type="text"
+                      required
                       value={profilePhone}
                       onChange={(e) => setProfilePhone(e.target.value)}
                       placeholder="Ej. 3312345678"

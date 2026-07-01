@@ -33,7 +33,7 @@ export const PLAN_LIMITS = {
   pro: 15,
 };
 
-// Date validation helper: returns the Monday of the week that the selection applies to
+// Date validation helper: returns the Monday of the week that the selection applies to (always next week)
 export function getTargetWeekMonday(date = new Date()) {
   const d = new Date(date);
   const day = d.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
@@ -44,10 +44,8 @@ export function getTargetWeekMonday(date = new Date()) {
   const monday = new Date(d.setDate(diff));
   monday.setHours(0, 0, 0, 0);
   
-  // If it's Saturday (6) or Sunday (0), selection is for the UPCOMING week
-  if (day === 6 || day === 0) {
-    monday.setDate(monday.getDate() + 7);
-  }
+  // Always shift to the upcoming calendar week (next week)
+  monday.setDate(monday.getDate() + 7);
   
   return monday;
 }
@@ -58,6 +56,10 @@ export function getWeekId(date = new Date()) {
   const mm = String(monday.getMonth() + 1).padStart(2, '0');
   const dd = String(monday.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+export function isDayBlockedBy48h(weekId, dayName, currentDate = new Date()) {
+  return false;
 }
 
 export const getEmptySelections = (plan) => {
@@ -104,7 +106,7 @@ export function MealSelectionProvider({ children }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [withCutlery, setWithCutlery] = useState(false);
-  const [shippingCost, setShippingCost] = useState(20);
+  const [shippingCost, setShippingCost] = useState(0);
 
   // Save simulation mode to local storage when changed
   useEffect(() => {
@@ -126,8 +128,12 @@ export function MealSelectionProvider({ children }) {
 
   const simulatedDate = getSimulatedDate();
   const dayOfWeek = simulatedDate.getDay();
-  const isSelectionOpen = (dayOfWeek === 6 || dayOfWeek === 0);
+  const isSelectionOpen = true; // Always allow entering the catalog to modify, subject to 48-hour day blocking
   const weekId = getWeekId(simulatedDate);
+
+  const isDayBlocked = useCallback((dayName) => {
+    return false;
+  }, []);
 
   // Compute selectedMealIds as a flat list for backward compatibility
   const selectedMealIds = React.useMemo(() => {
@@ -199,6 +205,7 @@ export function MealSelectionProvider({ children }) {
           if (selectionSnap.exists()) {
             const data = selectionSnap.data();
             setUserSelectionDoc(data);
+            setIsAccepted(data.isAccepted || false);
             
             if (data.withCutlery !== undefined) {
               setWithCutlery(data.withCutlery);
@@ -336,12 +343,7 @@ export function MealSelectionProvider({ children }) {
     setError(null);
 
     if (isAccepted) {
-      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
-      return false;
-    }
-
-    if (!isSelectionOpen) {
-      setError('El periodo de selección de menú está cerrado.');
+      setError('Tu selección ya ha sido confirmada y aceptada. No se puede modificar.');
       return false;
     }
 
@@ -428,16 +430,13 @@ export function MealSelectionProvider({ children }) {
       updated[day] = { ...updated[day], [slot]: dishId };
       return updated;
     });
+    setIsAccepted(false); // Mark selections dirty to require verification again
     return true;
   };
 
   const removeDishFromSlot = (day, slot) => {
     if (isAccepted) {
-      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
-      return;
-    }
-    if (!isSelectionOpen) {
-      setError('El periodo de selección de menú está cerrado.');
+      setError('Tu selección ya ha sido confirmada y aceptada. No se puede modificar.');
       return;
     }
     setError(null);
@@ -448,19 +447,26 @@ export function MealSelectionProvider({ children }) {
       }
       return updated;
     });
+    setIsAccepted(false); // Mark selections dirty to require verification again
   };
 
   const clearSelection = () => {
-    if (isAccepted) {
-      setError('Tu selección ya ha sido confirmada y aceptada para esta semana. No es posible realizar modificaciones.');
-      return;
-    }
-    if (!isSelectionOpen) {
-      setError('El periodo de selección de menú está cerrado.');
-      return;
-    }
     setError(null);
-    setSelectedDays(getEmptySelections(plan));
+    if (isAccepted) {
+      setError('Tu selección ya ha sido confirmada y aceptada. No se puede modificar.');
+      return;
+    }
+    setSelectedDays((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(day => {
+        const slots = Object.keys(updated[day]);
+        slots.forEach(slot => {
+          updated[day][slot] = null;
+        });
+      });
+      return updated;
+    });
+    setIsAccepted(false); // Mark selections dirty to require verification again
   };
 
   const getDishesForDay = useCallback((day) => {
@@ -586,6 +592,7 @@ export function MealSelectionProvider({ children }) {
         syncSuccess,
         isAccepted,
         setIsAccepted,
+        isDayBlocked,
         
         // Shipping and Cutlery variables
         withCutlery,

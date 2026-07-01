@@ -1,6 +1,6 @@
 # Lunch Lovers GDL 🥗📦
 
-Plataforma web moderna y responsiva para **Lunch Lovers GDL**, un servicio premium de viandas y planes de alimentación semanales o mensuales. La aplicación cuenta con un portal interactivo para clientes, un panel de administración para la gestión de platos y pedidos, y un asistente virtual de nutrición potenciado por Inteligencia Artificial (Gemini API).
+Plataforma web moderna y responsiva para **Lunch Lovers GDL**, un servicio premium de viandas y planes de alimentación semanales o mensuales. La aplicación cuenta con un portal interactivo para clientes, un panel de administración para la gestión de platos y pedidos, y un asistente virtual de menú potenciado por Inteligencia Artificial (Gemini API).
 
 ---
 
@@ -9,7 +9,7 @@ Plataforma web moderna y responsiva para **Lunch Lovers GDL**, un servicio premi
 - **Landing Page Atractiva y Fluida:** Presentación de la marca con animaciones dinámicas ([Framer Motion](https://www.framer.com/motion/)), catálogo de platos interactivo, tabla de precios de planes y sección de preguntas frecuentes/contacto.
 - **Portal de Cliente (Dashboard):** Área privada donde los usuarios autenticados pueden visualizar su plan activo y seleccionar sus comidas semanales personalizadas.
 - **Panel de Administración (Admin Dashboard):** Panel protegido exclusivamente para administradores que permite crear, editar y eliminar platos del catálogo, además de supervisar los pedidos y perfiles de usuario.
-- **Asistente Nutricional con IA:** Chat interactivo flotante impulsado por el SDK oficial de Google Gemini (`@google/genai`) para resolver dudas de nutrición, ingredientes y recomendar platos del menú.
+- **Asistente Virtual con IA:** Chat interactivo flotante impulsado por el SDK oficial de Google Gemini (`@google/genai`) para resolver dudas de ingredientes y recomendar platos del menú en base a las calorías del plan.
 - **Autenticación y Base de Datos en Tiempo Real:** Integración robusta con **Firebase Authentication** y **Cloud Firestore** para el manejo seguro de usuarios, roles (admin/cliente) y datos.
 - **Pasarela de Pago (Simulada/Callback):** Soporte de flujos de redirección y callback integrados para Mercado Pago (actualización automática del plan del usuario al procesar exitosamente el pago).
 - **Acceso Directo a Soporte:** Botón flotante interactivo de contacto directo con WhatsApp.

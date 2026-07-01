@@ -295,7 +295,7 @@ La respuesta DEBE ser una lista HTML simple (etiqueta <ul> conteniendo elementos
           <div class="section-title">Sugerencias de la IA para tus Platillos</div>
           <div style="font-size: 13px; line-height: 1.6; color: #333333; background-color: #fcfbf9; padding: 16px; border-radius: 12px; border: 1px dashed #B05A32; margin-top: 15px;">
             <p style="margin-top: 0; font-weight: bold; color: #B05A32; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-              Complementos sugeridos por NutriLovers AI:
+              Complementos sugeridos por LunchLovers AI:
             </p>
             ${aiSuggestionsHtml}
           </div>
@@ -373,16 +373,17 @@ exports.chatConGemini = onRequest({ cors: true }, async (req, res) => {
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
     const SYSTEM_INSTRUCTION = `
-Eres un Asistente Personal de Nutrición experto de 'Lunch Lovers GDL'.
-Tu objetivo es ayudar al usuario a armar su menú semanal recomendándole combinaciones de nuestros platillos según sus metas calóricas diarias o semanales, y responder dudas sobre nuestros planes y servicio.
+Eres un Asistente Virtual inteligente de 'Lunch Lovers GDL' especializado en ayudar a los clientes a elegir y planificar su menú de comidas.
+Tu objetivo es sugerir combinaciones de nuestros platillos según el tipo de plan (Hearty Lovers para porciones completas, Light Lovers para porciones ligeras), responder dudas de ingredientes y resolver inquietudes sobre el servicio.
+Importante: Eres un asistente de menú, NO eres un profesional de la salud ni un nutriólogo clínico, por lo que no das asesoría médica o diagnósticos nutricionales.
 Sé siempre sumamente amable, profesional, conciso y estructurado en tus respuestas. Usa viñetas cortas.
 
 Nuestros planes y suscripciones actuales son:
-- **Plan 800 calorías** (ideal para metas calóricas de 800 kcal por comida):
+- **Plan Hearty Lovers** (porciones abundantes y completas):
   - 1 comida al día (5 comidas/sem): $800 MXN / sem
   - 2 comidas al día (10 comidas/sem): $1,350 MXN / sem
   - 3 comidas al día (15 comidas/sem): $1,800 MXN / sem
-- **Plan 600 calorías** (ideal para metas calóricas de 600 kcal por comida):
+- **Plan Light Lovers** (porciones moderadas y ligeras):
   - 1 comida al día (5 comidas/sem): $650 MXN / sem
   - 2 comidas al día (10 comidas/sem): $1,250 MXN / sem
   - 3 comidas al día (15 comidas/sem): $1,700 MXN / sem
@@ -391,7 +392,7 @@ Nuestros planes y suscripciones actuales son:
 
 Información del Servicio:
 - **Zona de reparto**: Únicamente dentro del municipio de Guadalajara (somos una Dark Kitchen).
-- **Costo de envío**: $20 MXN fijo por entrega.
+- **Costo de envío**: El costo de envío ya está incluido en el precio de todos los paquetes, por lo que es totalmente gratuito/de $0 MXN adicionales.
 - **Contacto y Soporte**: Correo electrónico soporte@lunchlovers.com o WhatsApp al +523322557804.
 
 Nuestro catálogo real de platillos es:
@@ -542,4 +543,9 @@ exports.cambiarContrasenaUsuario = onRequest({ cors: true }, async (req, res) =>
     res.status(500).json({ error: error.message || "Error al cambiar contraseña." });
   }
 });
+
+
+
+
+
 

@@ -168,7 +168,7 @@ export default function Contact() {
                         className="w-full px-4 py-3 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/20 focus:border-retro-terracota text-retro-terracota text-xs font-bold bg-white"
                       >
                         <option value="General">Tengo una duda general</option>
-                        <option value="Planes">Quiero asesoría para elegir mi plan</option>
+                        <option value="Planes">Quiero ayuda para elegir mi plan</option>
                         <option value="Corporativo">Quiero cotizar comida para mi oficina</option>
                         <option value="Alergias">Requiero un menú especial por alérgenos</option>
                       </select>
@@ -194,7 +194,7 @@ export default function Contact() {
                       className="w-full bg-retro-terracota hover:bg-retro-terracota/95 text-white font-extrabold py-3.5 px-6 rounded-2xl flex items-center justify-center space-x-2 shadow-lg shadow-retro-terracota/10 transition-all text-xs uppercase tracking-wider border border-retro-terracota"
                     >
                       <Send className="w-4 h-4" />
-                      <span>Enviar Mensaje y Agendar Asesoría</span>
+                      <span>Enviar Mensaje</span>
                     </motion.button>
                   </motion.form>
                 ) : (
@@ -210,7 +210,7 @@ export default function Contact() {
                     </div>
                     <h3 className="text-xl font-black text-retro-terracota font-sans">¡Mensaje Recibido!</h3>
                     <p className="text-retro-terracota/70 text-xs font-bold max-w-sm">
-                      Gracias, {formState.name}. Tu solicitud de asesoría ha sido registrada. Uno de nuestros nutriólogos te contactará muy pronto.
+                      Gracias, {formState.name}. Tu mensaje ha sido recibido. Nuestro equipo de soporte te contactará muy pronto.
                     </p>
                     <span className="text-[10px] text-retro-terracota/40 animate-pulse font-bold">Restableciendo formulario...</span>
                   </motion.div>

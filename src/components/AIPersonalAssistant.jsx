@@ -5,7 +5,7 @@ import { Sparkles, X, Send, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 export default function AIPersonalAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'model', text: '¡Hola! Soy tu asistente nutricional de Lunch Lovers. Dime tu objetivo calórico diario o semanal y te ayudaré a armar tu plan de comidas perfecto.' }
+    { role: 'model', text: '¡Hola! Soy tu asistente virtual de Lunch Lovers. Dime tu objetivo calórico o de comidas y te ayudaré a armar tu menú semanal perfecto.' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function AIPersonalAssistant() {
 
   const clearChat = () => {
     setMessages([
-      { role: 'model', text: '¡Hola! Soy tu asistente nutricional de Lunch Lovers. Dime tu objetivo calórico diario o semanal y te ayudaré a armar tu plan de comidas perfecto.' }
+      { role: 'model', text: '¡Hola! Soy tu asistente virtual de Lunch Lovers. Dime tu objetivo calórico o de comidas y te ayudaré a armar tu menú semanal perfecto.' }
     ]);
     setError('');
   };
@@ -84,7 +84,7 @@ export default function AIPersonalAssistant() {
                   <Sparkles className="w-4.5 h-4.5 text-retro-mostaza animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black tracking-tight leading-none">NutriLovers AI</h4>
+                  <h4 className="text-sm font-black tracking-tight leading-none">LunchLovers AI</h4>
                   <div className="flex items-center space-x-1 mt-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     <span className="text-[10px] font-bold text-retro-crema/80">En línea</span>
@@ -156,16 +156,16 @@ export default function AIPersonalAssistant() {
                   Paquete Godínez
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de 800 Kcal diarias')}
+                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de Hearty Lovers (comidas completas)')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Plan 800 Kcal
+                  Plan Hearty Lovers
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de 600 Kcal diarias')}
+                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de Light Lovers (comidas ligeras)')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Plan 600 Kcal
+                  Plan Light Lovers
                 </button>
                 <button
                   onClick={() => handleSendMessage('¿Cómo funciona la opción de Comida Diaria Flexible?')}
@@ -174,7 +174,7 @@ export default function AIPersonalAssistant() {
                   Comida Diaria
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cuál es su zona de reparto en Guadalajara y el costo de envío?')}
+                  onClick={() => handleSendMessage('¿Cuál es su zona de reparto en Guadalajara y cómo funciona el envío?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
                   Zona de Reparto
@@ -271,7 +271,7 @@ export default function AIPersonalAssistant() {
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
               className="ml-3 bg-retro-terracota text-retro-crema font-bold text-xs py-2 px-4 rounded-xl border-2 border-retro-crema shadow-lg pointer-events-none whitespace-nowrap relative z-20"
             >
-              🤖 ¡Asistente Nutricional IA!
+              🤖 ¡Asistente Virtual IA!
               <div className="absolute left-[-6px] top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 bg-retro-terracota rotate-45 border-l-2 border-b-2 border-retro-crema" />
             </motion.div>
           )}

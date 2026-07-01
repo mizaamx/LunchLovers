@@ -42,6 +42,7 @@ export function AuthProvider({ children }) {
             uid: firebaseUser.uid,
             name: profileData.name || firebaseUser.displayName || firebaseUser.email.split('@')[0].toUpperCase(),
             email: firebaseUser.email,
+            phone: profileData.phone || '',
             emailVerified: firebaseUser.emailVerified,
             isAdmin: isAdmin,
             role: isAdmin ? 'admin' : 'user',
@@ -93,6 +94,7 @@ export function AuthProvider({ children }) {
       uid: firebaseUser.uid,
       name: profileData.name || firebaseUser.displayName || email.split('@')[0].toUpperCase(),
       email: email,
+      phone: profileData.phone || '',
       emailVerified: firebaseUser.emailVerified,
       isAdmin: isAdmin,
       role: isAdmin ? 'admin' : 'user',
@@ -114,7 +116,7 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, phone) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
 
@@ -127,6 +129,7 @@ export function AuthProvider({ children }) {
     const newUserDoc = {
       name: name,
       email: email,
+      phone: phone || '',
       plan: 'basic',
       paymentStatus: 'pending',
       address: {
@@ -148,6 +151,7 @@ export function AuthProvider({ children }) {
       uid: firebaseUser.uid,
       name: name,
       email: email,
+      phone: phone || '',
       emailVerified: firebaseUser.emailVerified,
       isAdmin: false,
       role: 'user',
@@ -183,6 +187,7 @@ export function AuthProvider({ children }) {
       profileData = {
         name: firebaseUser.displayName || firebaseUser.email.split('@')[0].toUpperCase(),
         email: firebaseUser.email,
+        phone: '',
         plan: 'basic',
         paymentStatus: 'pending',
         address: {
@@ -202,6 +207,7 @@ export function AuthProvider({ children }) {
       uid: firebaseUser.uid,
       name: profileData.name,
       email: firebaseUser.email,
+      phone: profileData.phone || '',
       emailVerified: firebaseUser.emailVerified,
       isAdmin: isAdmin,
       role: isAdmin ? 'admin' : 'user',

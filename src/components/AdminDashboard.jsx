@@ -47,9 +47,9 @@ const FOOD_IMAGES = [
 ];
 
 const mockUsers = [
-  { id: 'usr-1', name: 'SOFÍA RAMÍREZ', email: 'sofia.gdl@gmail.com', plan: 'normal', status: 'active', paymentStatus: 'paid', createdAt: '2026-05-10' },
-  { id: 'usr-2', name: 'MATEO HERNÁNDEZ', email: 'mateo.fit@outlook.com', plan: 'pro', status: 'active', paymentStatus: 'pending', createdAt: '2026-05-12' },
-  { id: 'usr-3', name: 'VALERIA FLORES', email: 'vale.vegan@gmail.com', plan: 'basic', status: 'active', paymentStatus: 'paid', createdAt: '2026-05-15' },
+  { id: 'usr-1', name: 'SOFÍA RAMÍREZ', email: 'sofia.gdl@gmail.com', phone: '3312457890', plan: 'normal', status: 'active', paymentStatus: 'paid', createdAt: '2026-05-10' },
+  { id: 'usr-2', name: 'MATEO HERNÁNDEZ', email: 'mateo.fit@outlook.com', phone: '3345678901', plan: 'pro', status: 'active', paymentStatus: 'pending', createdAt: '2026-05-12' },
+  { id: 'usr-3', name: 'VALERIA FLORES', email: 'vale.vegan@gmail.com', phone: '3356789012', plan: 'basic', status: 'active', paymentStatus: 'paid', createdAt: '2026-05-15' },
 ];
 
 const mockOrders = [
@@ -68,13 +68,11 @@ const mockOrders = [
 const getPlanCalories = (plan) => {
   if (!plan) return 'Sin Plan';
   const planLower = plan.toLowerCase();
-  if (planLower.includes('600')) return '600 Kcal';
-  if (planLower.includes('800')) return '800 Kcal';
+  if (planLower.includes('600')) return 'Light Lovers';
+  if (planLower.includes('800')) return 'Hearty Lovers';
   if (planLower === 'godinez') return 'Paquete Godínez';
   if (planLower === 'comida_diaria') return 'Comida Diaria';
-  if (planLower === 'basic') return 'Básico (Legacy)';
-  if (planLower === 'normal') return 'Normal (Legacy)';
-  if (planLower === 'pro') return 'Pro (Legacy)';
+  if (['basic', 'normal', 'pro'].includes(planLower)) return 'Legacy';
   return plan;
 };
 
@@ -753,7 +751,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         if (orderToDelete.isSelectionOrder && orderToDelete.selectionDocId) {
           await deleteDoc(doc(db, 'UserSelections', orderToDelete.selectionDocId));
         }
-        showSuccess(`Pedido "${orderToDelete.id}" eliminado exitosamente.`);
+        showSuccess(`Orden #${orderToDelete.orderNumber} eliminada exitosamente.`);
       } else {
         setOrders(prev => prev.filter(o => o.id !== orderToDelete.id));
         showSuccess(`Pedido eliminado del simulador.`);
@@ -880,6 +878,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         weekId: sel.weekId,
         userName,
         userEmail,
+        userPhone: selUser?.phone || sel.phone || 'Sin teléfono',
         plan: matchingOrder?.plan || selUser?.plan || null,
         selectedDays: sel.selectedDays || {},
         mealIds: sel.selectedDishes || [],
@@ -905,6 +904,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
         weekId: order.weekId || null,
         userName: order.userName || order.clientName || 'Cliente',
         userEmail: order.userEmail || order.clientEmail || 'correo@gdl.com',
+        userPhone: usersMap[order.userId]?.phone || order.phone || 'Sin teléfono',
         plan: order.plan || usersMap[order.userId]?.plan || null,
         selectedDays: order.selectedDays || {},
         mealIds: order.selectedMealIds || order.mealIds || order.selectedMeals || [],
@@ -914,8 +914,12 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       });
     });
 
-    // Sort by createdAt descending
-    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Sort by createdAt ascending (oldest first)
+    const sorted = list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    return sorted.map((order, index) => ({
+      ...order,
+      orderNumber: index + 1
+    }));
   }, [orders, userSelections, users]);
 
   // Badge calculations
@@ -1149,7 +1153,10 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                     {displayOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="p-4 sm:p-5 font-black text-retro-crema align-top whitespace-nowrap">
-                          <div>{order.id}</div>
+                          <div>Orden #{order.orderNumber}</div>
+                          <div className="text-[9px] text-slate-500 font-bold mt-0.5" title={order.id}>
+                            ID: {order.id.length > 8 ? order.id.substring(0, 8) + '...' : order.id}
+                          </div>
                           {order.weekId && (
                             <div className="text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
                               Semana: {order.weekId}
@@ -1160,6 +1167,10 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         <td className="p-4 sm:p-5 align-top">
                           <div className="font-extrabold text-slate-200">{order.userName}</div>
                           <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{order.userEmail}</div>
+                          <div className="text-[10px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
+                            <span>📞</span> 
+                            <span>{order.userPhone || 'Sin teléfono'}</span>
+                          </div>
                           {order.plan && (
                             <div className="mt-1.5">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase border tracking-wider ${
@@ -1714,24 +1725,25 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         </td>
 
                         <td className="p-4 sm:p-5">
-                          <select
-                            value={client.plan || ''}
-                            onChange={(e) => handlePlanChange(client, e.target.value)}
-                            className="px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer text-retro-crema border-retro-crema/20"
-                          >
-                            <option value="" className="text-slate-500">Sin Plan</option>
-                            <option value="cal800_1" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (1 Comida)</option>
-                            <option value="cal800_2" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (2 Comidas)</option>
-                            <option value="cal800_3" className="text-retro-terracota bg-slate-900">Plan 800 Kcal (3 Comidas)</option>
-                            <option value="cal600_1" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (1 Comida)</option>
-                            <option value="cal600_2" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (2 Comidas)</option>
-                            <option value="cal600_3" className="text-retro-mostaza bg-slate-900">Plan 600 Kcal (3 Comidas)</option>
-                            <option value="godinez" className="text-retro-crema bg-slate-900">Paquete Godínez</option>
-                            <option value="comida_diaria" className="text-retro-crema bg-slate-900">Comida Diaria (Flexible)</option>
-                            <option value="basic" className="text-slate-500 bg-slate-900">Básico (Legacy)</option>
-                            <option value="normal" className="text-slate-500 bg-slate-900">Normal (Legacy)</option>
-                            <option value="pro" className="text-slate-500 bg-slate-900">Pro (Legacy)</option>
-                          </select>
+                          {['basic', 'normal', 'pro'].includes(client.plan) ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 font-black uppercase text-[9px] border border-slate-700/50">Legacy</span>
+                          ) : (
+                            <select
+                              value={client.plan || ''}
+                              onChange={(e) => handlePlanChange(client, e.target.value)}
+                              className="px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer text-retro-crema border-retro-crema/20"
+                            >
+                              <option value="" className="text-slate-500">Sin Plan</option>
+                              <option value="cal800_1" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (1 Comida)</option>
+                              <option value="cal800_2" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (2 Comidas)</option>
+                              <option value="cal800_3" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (3 Comidas)</option>
+                              <option value="cal600_1" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (1 Comida)</option>
+                              <option value="cal600_2" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (2 Comidas)</option>
+                              <option value="cal600_3" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (3 Comidas)</option>
+                              <option value="godinez" className="text-retro-crema bg-slate-900">Paquete Godínez</option>
+                              <option value="comida_diaria" className="text-retro-crema bg-slate-900">Comida Diaria (Flexible)</option>
+                            </select>
+                          )}
                         </td>
 
                         <td className="p-4 sm:p-5 text-center">
@@ -2082,7 +2094,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                 ¿Eliminar Pedido?
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed mb-6 font-semibold">
-                ¿Estás seguro de que deseas eliminar el pedido <span className="text-retro-terracota font-black">"{orderToDelete.id}"</span> de <span className="text-retro-crema font-bold">{orderToDelete.userName}</span>? Esta acción es permanente e irreversible.
+                ¿Estás seguro de que deseas eliminar la <span className="text-retro-terracota font-black">Orden #{orderToDelete.orderNumber}</span> de <span className="text-retro-crema font-bold">{orderToDelete.userName}</span>? Esta acción es permanente e irreversible.
               </p>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={() => setOrderToDelete(null)}
@@ -2287,7 +2299,18 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         return map[d] || d;
                       };
                       const formatSlot = (s) => {
-                        const map = { comida: 'Almuerzo', cena: 'Cena', snack: 'Snack' };
+                        const map = { comida: 'Platillo 1', cena: 'Platillo 2', snack: 'Platillo 3', bebida: 'Platillo 4' };
+                        const userPlan = selectedOrderForMealsModal.plan || '';
+                        const limits = {
+                          cal800_1: 1,
+                          cal600_1: 1,
+                          comida_diaria: 1,
+                          godinez: 1,
+                          basic: 1,
+                        };
+                        if (userPlan && limits[userPlan] === 1 && s === 'comida') {
+                          return 'Platillo';
+                        }
                         return map[s] || s;
                       };
                       

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Leaf } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Leaf, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthModal({ isOpen, onClose }) {
@@ -8,6 +8,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,6 +22,8 @@ export default function AuthModal({ isOpen, onClose }) {
     setError('');
     setSuccess('');
     setPassword('');
+    setName('');
+    setPhone('');
     setVerificationSent(false);
   };
 
@@ -37,8 +40,18 @@ export default function AuthModal({ isOpen, onClose }) {
         await login(email, password);
         onClose(); // Close modal upon success
       } else if (activeTab === 'register') {
+        if (!name.trim()) {
+          setError('El nombre completo es requerido.');
+          setLoading(false);
+          return;
+        }
+        if (!phone.trim()) {
+          setError('El teléfono de contacto es requerido.');
+          setLoading(false);
+          return;
+        }
         // Firebase register (sends email verification inside AuthContext)
-        await register(name, email, password);
+        await register(name, email, password, phone);
         setVerificationSent(true); // Show verification screen instead of closing
       } else if (activeTab === 'forgot') {
         if (!email) {
@@ -256,18 +269,36 @@ export default function AuthModal({ isOpen, onClose }) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
+                  className="space-y-4"
                 >
-                  <label className="block text-xs font-bold text-retro-terracota/80 uppercase tracking-wider mb-1.5">Nombre Completo</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      placeholder="Tu nombre completo"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota placeholder-retro-terracota/30 text-sm transition-all font-bold"
-                    />
-                    <User className="w-4 h-4 text-retro-terracota/40 absolute left-3.5 top-3.5" />
+                  <div>
+                    <label className="block text-xs font-bold text-retro-terracota/80 uppercase tracking-wider mb-1.5">Nombre Completo</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tu nombre completo"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota placeholder-retro-terracota/30 text-sm transition-all font-bold"
+                      />
+                      <User className="w-4 h-4 text-retro-terracota/40 absolute left-3.5 top-3.5" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-retro-terracota/80 uppercase tracking-wider mb-1.5">Teléfono de Contacto (WhatsApp)</label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        required
+                        placeholder="Ej. 3312345678"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/25 focus:border-retro-terracota text-retro-terracota placeholder-retro-terracota/30 text-sm transition-all font-bold"
+                      />
+                      <Phone className="w-4 h-4 text-retro-terracota/40 absolute left-3.5 top-3.5" />
+                    </div>
                   </div>
                 </motion.div>
               )}

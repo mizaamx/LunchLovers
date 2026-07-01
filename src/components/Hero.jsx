@@ -87,7 +87,7 @@ export default function Hero() {
               variants={itemVariants}
               className="text-retro-terracota/80 text-base sm:text-lg font-bold leading-relaxed max-w-xl"
             >
-              Planes de alimentación balanceados y frescos creados por chefs y nutriólogos. Preparados con ingredientes locales y entregados diariamente listos para comer.
+              Planes de alimentación balanceados y frescos creados por chefs expertos. Preparados con ingredientes locales y entregados diariamente listos para comer.
             </motion.p>
 
             {/* Call to Actions */}
@@ -128,7 +128,7 @@ export default function Hero() {
               </div>
               <div className="flex flex-col space-y-1">
                 <span className="flex items-center text-retro-terracota font-bold text-xs">
-                  <CheckCircle className="w-4 h-4 mr-1.5 flex-shrink-0 text-retro-mostaza stroke-[2.5]" /> Nutriólogo Aprobado
+                  <CheckCircle className="w-4 h-4 mr-1.5 flex-shrink-0 text-retro-mostaza stroke-[2.5]" /> Balance Nutricional
                 </span>
                 <span className="text-[10px] text-retro-terracota/70 font-semibold">Macronutrientes controlados</span>
               </div>

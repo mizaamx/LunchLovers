@@ -26,12 +26,12 @@ export default function RequirePaymentGate({ children }) {
     };
 
     const plansInfo = {
-      cal800_1: { name: 'Plan 800 Kcal (1 Comida)', price: '$800.00 MXN / sem' },
-      cal800_2: { name: 'Plan 800 Kcal (2 Comidas)', price: '$1,350.00 MXN / sem' },
-      cal800_3: { name: 'Plan 800 Kcal (3 Comidas)', price: '$1,800.00 MXN / sem' },
-      cal600_1: { name: 'Plan 600 Kcal (1 Comida)', price: '$650.00 MXN / sem' },
-      cal600_2: { name: 'Plan 600 Kcal (2 Comidas)', price: '$1,250.00 MXN / sem' },
-      cal600_3: { name: 'Plan 600 Kcal (3 Comidas)', price: '$1,700.00 MXN / sem' },
+      cal800_1: { name: 'Plan Hearty Lovers (1 Comida)', price: '$800.00 MXN / sem' },
+      cal800_2: { name: 'Plan Hearty Lovers (2 Comidas)', price: '$1,350.00 MXN / sem' },
+      cal800_3: { name: 'Plan Hearty Lovers (3 Comidas)', price: '$1,800.00 MXN / sem' },
+      cal600_1: { name: 'Plan Light Lovers (1 Comida)', price: '$650.00 MXN / sem' },
+      cal600_2: { name: 'Plan Light Lovers (2 Comidas)', price: '$1,250.00 MXN / sem' },
+      cal600_3: { name: 'Plan Light Lovers (3 Comidas)', price: '$1,700.00 MXN / sem' },
       godinez: { name: 'Paquete Godínez', price: '$750.00 MXN / sem' },
       comida_diaria: { name: 'Comida Diaria (Flexible)', price: '$125.00 MXN / comida' },
       basic: { name: 'Plan Básico', price: '$29.00 MXN / mes' },
