@@ -1725,25 +1725,26 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                         </td>
 
                         <td className="p-4 sm:p-5">
-                          {['basic', 'normal', 'pro'].includes(client.plan) ? (
-                            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 font-black uppercase text-[9px] border border-slate-700/50">Legacy</span>
-                          ) : (
-                            <select
-                              value={client.plan || ''}
-                              onChange={(e) => handlePlanChange(client, e.target.value)}
-                              className="px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer text-retro-crema border-retro-crema/20"
-                            >
-                              <option value="" className="text-slate-500">Sin Plan</option>
-                              <option value="cal800_1" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (1 Comida)</option>
-                              <option value="cal800_2" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (2 Comidas)</option>
-                              <option value="cal800_3" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (3 Comidas)</option>
-                              <option value="cal600_1" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (1 Comida)</option>
-                              <option value="cal600_2" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (2 Comidas)</option>
-                              <option value="cal600_3" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (3 Comidas)</option>
-                              <option value="godinez" className="text-retro-crema bg-slate-900">Paquete Godínez</option>
-                              <option value="comida_diaria" className="text-retro-crema bg-slate-900">Comida Diaria (Flexible)</option>
-                            </select>
-                          )}
+                          <select
+                            value={client.plan || ''}
+                            onChange={(e) => handlePlanChange(client, e.target.value)}
+                            className="px-2 py-1.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border bg-slate-950 cursor-pointer text-retro-crema border-retro-crema/20"
+                          >
+                            <option value="" className="text-slate-500">Sin Plan</option>
+                            {['basic', 'normal', 'pro'].includes(client.plan) && (
+                              <option value={client.plan} className="text-slate-400 bg-slate-900">
+                                Legacy ({client.plan === 'basic' ? 'Básico' : client.plan === 'normal' ? 'Normal' : 'Pro'})
+                              </option>
+                            )}
+                            <option value="cal800_1" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (1 Comida)</option>
+                            <option value="cal800_2" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (2 Comidas)</option>
+                            <option value="cal800_3" className="text-retro-terracota bg-slate-900">Plan Hearty Lovers (3 Comidas)</option>
+                            <option value="cal600_1" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (1 Comida)</option>
+                            <option value="cal600_2" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (2 Comidas)</option>
+                            <option value="cal600_3" className="text-retro-mostaza bg-slate-900">Plan Light Lovers (3 Comidas)</option>
+                            <option value="godinez" className="text-retro-crema bg-slate-900">Paquete Godínez</option>
+                            <option value="comida_diaria" className="text-retro-crema bg-slate-900">Comida Diaria (Flexible)</option>
+                          </select>
                         </td>
 
                         <td className="p-4 sm:p-5 text-center">
