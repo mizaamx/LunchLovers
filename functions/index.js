@@ -370,13 +370,71 @@ exports.chatConGemini = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
+    const db = admin.firestore();
+    
+    // 1. Obtener menú semanal activo
+    const activeMenuQuery = await db.collection("WeeklyMenus").where("isActive", "==", true).limit(1).get();
+    let availableDishes = null;
+    let weekId = "semana actual";
+    
+    activeMenuQuery.forEach(doc => {
+      availableDishes = doc.data().availableDishes;
+      weekId = doc.id;
+    });
+
+    // 2. Obtener todos los platillos para mapear por ID
+    const dishesSnapshot = await db.collection("Dishes").get();
+    const dishesMap = {};
+    dishesSnapshot.forEach(doc => {
+      dishesMap[doc.id] = { id: doc.id, ...doc.data() };
+    });
+
+    // 3. Agrupar platillos por día según el menú activo
+    let weeklyMenuText = "";
+    if (availableDishes) {
+      const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+      days.forEach(day => {
+        const ids = availableDishes[day] || [];
+        const dayNameCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
+        weeklyMenuText += `\n**${dayNameCapitalized}**:\n`;
+        
+        let count = 1;
+        ids.forEach(id => {
+          const dish = dishesMap[id];
+          if (dish) {
+            const cal = dish.macros?.calories || 0;
+            const pro = dish.macros?.protein || 0;
+            const fat = dish.macros?.fat || 0;
+            const carbs = dish.macros?.carbs || 0;
+            const desc = dish.description || "Sin descripción";
+            const cat = dish.category || "platillo";
+            weeklyMenuText += `  ${count}. ${dish.name} (${cat.toUpperCase()}) - ${cal} Kcal | ${pro}g Pro | ${fat}g Grasa | ${carbs}g Carb - ${desc}\n`;
+            count++;
+          }
+        });
+      });
+    } else {
+      // Fallback si no hay menú activo: listar todo el catálogo general
+      weeklyMenuText = "\nCatálogo general (No hay menú semanal activo):\n";
+      let count = 1;
+      Object.values(dishesMap).forEach(dish => {
+        const cal = dish.macros?.calories || 0;
+        const pro = dish.macros?.protein || 0;
+        const fat = dish.macros?.fat || 0;
+        const carbs = dish.macros?.carbs || 0;
+        const desc = dish.description || "Sin descripción";
+        const cat = dish.category || "platillo";
+        weeklyMenuText += `  ${count}. ${dish.name} (${cat.toUpperCase()}) - ${cal} Kcal | ${pro}g Pro | ${fat}g Grasa | ${carbs}g Carb - ${desc}\n`;
+        count++;
+      });
+    }
+
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
     const SYSTEM_INSTRUCTION = `
-Eres un Asistente Virtual inteligente de 'Lunch Lovers GDL' especializado en ayudar a los clientes a elegir y planificar su menú de comidas.
-Tu objetivo es sugerir combinaciones de nuestros platillos según el tipo de plan (Hearty Lovers para porciones completas, Light Lovers para porciones ligeras), responder dudas de ingredientes y resolver inquietudes sobre el servicio.
-Importante: Eres un asistente de menú, NO eres un profesional de la salud ni un nutriólogo clínico, por lo que no das asesoría médica o diagnósticos nutricionales.
-Sé siempre sumamente amable, profesional, conciso y estructurado en tus respuestas. Usa viñetas cortas.
+Eres un Asistente Virtual inteligente y Nutriólogo Profesional de 'Lunch Lovers GDL' especializado en ayudar a los clientes a elegir y planificar su menú de comidas de forma saludable, equilibrada y alineada con sus objetivos físicos (perder grasa, ganar masa muscular, mantenimiento, etc.).
+Tu objetivo es actuar como un nutriólogo profesional y consultor de salud: proporciona recomendaciones nutricionales, calcula requerimientos calóricos diarios ideales si te proporcionan sus datos (edad, peso, estatura, nivel de actividad), explica la distribución de macros de manera clara y guíalos a seleccionar los platillos idóneos de nuestro menú semanal activo.
+Sé siempre sumamente amable, profesional, empático, conciso y estructurado en tus respuestas. Usa viñetas cortas.
 
 Nuestros planes y suscripciones actuales son:
 - **Plan Hearty Lovers** (porciones abundantes y completas):
@@ -395,16 +453,11 @@ Información del Servicio:
 - **Costo de envío**: El costo de envío ya está incluido en el precio de todos los paquetes, por lo que es totalmente gratuito/de $0 MXN adicionales.
 - **Contacto y Soporte**: Correo electrónico soporte@lunchlovers.com o WhatsApp al +523322557804.
 
-Nuestro catálogo real de platillos es:
-1. Amanida de Saumon avec Avocat (Keto / Proteína) - 420 Kcal | 38g Proteína | 24g Grasa | 8g Carb.
-2. Buddha Bowl de Quinoa avec Edamame (Vegano) - 380 Kcal | 16g Proteína | 12g Grasa | 52g Carb.
-3. Salată de Pui et Quinoa Fitness (Alto en Proteína) - 410 Kcal | 45g Proteína | 8g Grasa | 35g Carb.
-4. Ensalada de Tofu Crujiente avec Végétaux (Keto / Vegano) - 310 Kcal | 18g Proteína | 22g Grasa | 10g Carb.
-5. Saumon Glacé Oriental Style Keto (Keto) - 395 Kcal | 35g Proteína | 21g Grasa | 11g Carb.
-6. Curry de Poids Chiches et Quinoa Fit (Vegano / Alto en Proteína) - 440 Kcal | 22g Proteína | 14g Grasa | 48g Carb.
+El menú semanal activo real de platillos para la semana (${weekId}) es el siguiente:
+${weeklyMenuText}
 
-Si el usuario te dice sus calorías objetivo para el almuerzo o cena, sugiérele la mejor combinación para sus almuerzos/cenas semanales (ej. si su plan es de 5 platillos, sugiérele 5 de ellos para almuerzo; si es de 10 platillos, almuerzo y cena para 5 días). Haz los cálculos exactos y muéstrale la suma total de calorías y macros.
-Importante: No inventes platillos fuera de este catálogo. Responde en español. No uses emojis.
+Si el usuario te dice sus calorías objetivo para el almuerzo o cena, sugiérele la mejor combinación para sus almuerzos/cenas semanales usando estrictamente los platillos de los días correspondientes o del catálogo anterior. Haz los cálculos exactos y muéstrale la suma total de calorías y macros de tu sugerencia de forma profesional como nutriólogo.
+Importante: Recomienda ÚNICAMENTE los platillos reales listados arriba. No inventes bajo ninguna circunstancia platillos que no estén en la lista. Responde en español. No uses emojis.
 `;
 
     // Mapear historial al formato esperado por la SDK

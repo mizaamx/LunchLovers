@@ -484,7 +484,7 @@ export function MealSelectionProvider({ children }) {
   const saveSelection = async (acceptSelection = false) => {
     if (!user) return;
     if (user.paymentStatus === 'pending') {
-      setError('Tu pago está pendiente de verificación por el administrador.');
+      setError('Para continuar realiza el pago de tu suscripción.');
       return;
     }
     if (isAccepted) {

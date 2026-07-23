@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MealSelectionProvider } from './context/MealSelectionContext';
 import Header from './components/Header';
@@ -7,7 +8,7 @@ import HowItWorks from './components/HowItWorks';
 import WhatsAppButton from './components/WhatsAppButton';
 import RequirePaymentGate from './components/RequirePaymentGate';
 
-// Helper to handle ChunkLoadError when a new version is deployed and the user's browser attempts to fetch outdated assets
+// Helper para reintentar la carga en caso de ChunkLoadError por nuevos despliegues
 const lazyWithRetry = (importFn) => {
   return lazy(async () => {
     try {
@@ -17,18 +18,17 @@ const lazyWithRetry = (importFn) => {
       const lastReload = localStorage.getItem('chunk_load_failed_reload');
       const now = Date.now();
       
-      // Prevent infinite reload loops if there is a real network/server error (limit reload to once every 10s)
       if (!lastReload || now - parseInt(lastReload) > 10000) {
         localStorage.setItem('chunk_load_failed_reload', now.toString());
         window.location.reload();
-        return new Promise(() => {}); // Suspend while page is reloading
+        return new Promise(() => {});
       }
-      
       throw error;
     }
   });
 };
 
+// Carga perezosa de los componentes
 const Dashboard = lazyWithRetry(() => import('./components/Dashboard'));
 const AdminDashboard = lazyWithRetry(() => import('./components/AdminDashboard'));
 const AIPersonalAssistant = lazyWithRetry(() => import('./components/AIPersonalAssistant'));
@@ -37,30 +37,57 @@ const Pricing = lazyWithRetry(() => import('./components/Pricing'));
 const Testimonials = lazyWithRetry(() => import('./components/Testimonials'));
 const Contact = lazyWithRetry(() => import('./components/Contact'));
 
-function AppContent() {
-  const [activeSection, setActiveSection] = useState('inicio');
-  const [currentPage, setCurrentPage] = useState('landing'); // 'landing', 'dashboard', 'admin'
-  const { user, loading, updateProfile } = useAuth();
-  
-  const userRef = useRef(user);
+// Ruta protegida para clientes autenticados con pasarela de pago activa
+function PrivateRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="py-24 text-center">
+      <div className="w-8 h-8 border-4 border-retro-crema border-t-retro-terracota rounded-full animate-spin mx-auto mb-3" />
+      <p className="text-xs text-retro-terracota/70 font-bold">Cargando...</p>
+    </div>
+  );
+  return user ? <RequirePaymentGate>{children}</RequirePaymentGate> : <Navigate to="/" replace />;
+}
+
+// Ruta protegida para administradores
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="py-24 text-center">
+      <div className="w-8 h-8 border-4 border-retro-crema border-t-retro-terracota rounded-full animate-spin mx-auto mb-3" />
+      <p className="text-xs text-retro-terracota/70 font-bold">Cargando...</p>
+    </div>
+  );
+  return user && user.isAdmin ? children : <Navigate to="/" replace />;
+}
+
+function AppLayout() {
+  const { user, updateProfile } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const processedPaymentRef = useRef(false);
 
-  // Sync user reference to keep event listener dependency-free
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
+  const [activeSection, _setActiveSection] = useState('inicio');
 
-  // Protected route enforcement for Admin
+  const isAdminView = location.pathname.startsWith('/admin');
+
+  // Compatibilidad: mapeamos la ruta actual al "currentPage" esperado por Header y subcomponentes
+  const currentPage = 
+    location.pathname === '/dashboard' ? 'dashboard' :
+    location.pathname === '/admin' ? 'admin' : 'landing';
+
+  // Sincronizar activeSection cuando se cargan rutas directas
   useEffect(() => {
-    if (currentPage === 'admin') {
-      if (!loading && (!user || !user.isAdmin)) {
-        setCurrentPage('landing');
-        setActiveSection('inicio');
-      }
+    if (location.pathname === '/menu') {
+      _setActiveSection('catalogo');
+    } else if (location.pathname === '/planes') {
+      _setActiveSection('pricing');
+    } else if (location.pathname === '/') {
+      _setActiveSection('inicio');
     }
-  }, [currentPage, user, loading]);
+  }, [location.pathname]);
 
-  // Handle Mercado Pago payment success callback parameters
+  // Manejo del callback de Mercado Pago (éxito de pago)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment');
@@ -71,62 +98,57 @@ function AppContent() {
       const updatePlan = async () => {
         try {
           await updateProfile({ plan: planParam, selectedMeals: [] });
-          // Clear query params to clean up URL
           const newUrl = window.location.origin + window.location.pathname + window.location.hash;
           window.history.replaceState({}, document.title, newUrl);
-          
-          // Switch to dashboard view
-          setCurrentPage('dashboard');
+          navigate('/dashboard');
         } catch (e) {
           console.error("Failed to update plan from query param callback:", e);
         }
       };
       updatePlan();
     }
-  }, [user, updateProfile]);
+  }, [user, updateProfile, navigate]);
 
-  // Support direct route matching in hash/URL - Registered ONCE to prevent listener churn
+  // Soporte para redirección de hash antiguo (#admin o #dashboard)
   useEffect(() => {
-    const handleHashRoute = () => {
-      const hash = window.location.hash;
-      const currentUser = userRef.current;
-      if (hash === '#admin') {
-        if (currentUser && currentUser.isAdmin) {
-          setCurrentPage('admin');
-        } else {
-          setCurrentPage('landing');
-          window.location.hash = '';
-        }
-      } else if (hash === '#dashboard') {
-        if (currentUser) {
-          setCurrentPage('dashboard');
-        } else {
-          setCurrentPage('landing');
-          window.location.hash = '';
-        }
-      }
-    };
-
-    window.addEventListener('hashchange', handleHashRoute);
-    handleHashRoute(); // check on mount
-
-    return () => window.removeEventListener('hashchange', handleHashRoute);
-  }, []);
+    const hash = window.location.hash;
+    if (hash === '#admin') {
+      window.location.hash = '';
+      navigate('/admin');
+    } else if (hash === '#dashboard') {
+      window.location.hash = '';
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col bg-retro-crema text-retro-terracota font-sans selection:bg-retro-terracota/20 selection:text-retro-terracota">
       
-      {/* Top Fixed Header (Only visible if not on Admin Panel to preserve its full sidebar height layout) */}
-      {currentPage !== 'admin' && (
+      {!isAdminView && (
         <Header 
           activeSection={activeSection} 
-          setActiveSection={setActiveSection} 
+          setActiveSection={(section) => {
+            if (section === 'catalogo') {
+              navigate('/menu');
+            } else if (section === 'pricing') {
+              navigate('/planes');
+            } else {
+              if (location.pathname !== '/') {
+                navigate('/');
+                setTimeout(() => _setActiveSection(section), 50);
+              } else {
+                _setActiveSection(section);
+              }
+            }
+          }}
           currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
+          setCurrentPage={(page) => {
+            if (page === 'dashboard') navigate('/dashboard');
+            else if (page === 'admin') navigate('/admin');
+          }}
         />
       )}
 
-      {/* Main Container */}
       <main className="flex-grow">
         <Suspense fallback={
           <div className="py-24 text-center flex flex-col items-center justify-center">
@@ -134,43 +156,71 @@ function AppContent() {
             <p className="text-xs text-retro-terracota/70 font-bold">Cargando...</p>
           </div>
         }>
-          {currentPage === 'landing' ? (
-            <>
-              {/* Full-width sequential sections */}
-              <Hero />
-              <HowItWorks />
-              <Catalog />
-              <Pricing />
-              <Testimonials />
-              <Contact />
-            </>
-          ) : currentPage === 'dashboard' ? (
-            /* Private client portal (full width page) */
-            <RequirePaymentGate>
-              <Dashboard 
-                setCurrentPage={setCurrentPage} 
-                setActiveSection={setActiveSection} 
-              />
-            </RequirePaymentGate>
-          ) : (
-            /* Protected administrator portal */
-            user && user.isAdmin ? (
-              <AdminDashboard 
-                setCurrentPage={setCurrentPage} 
-                setActiveSection={setActiveSection} 
-              />
-            ) : (
-              <div className="py-24 text-center">Redirigiendo...</div>
-            )
-          )}
+          <Routes>
+            {/* Página de Inicio (Línea de tiempo de secciones informativas) */}
+            <Route path="/" element={
+              <>
+                <Hero />
+                <HowItWorks />
+                <Testimonials />
+                <Contact />
+              </>
+            } />
+
+            {/* Menú Semanal / Catálogo */}
+            <Route path="/menu" element={<Catalog />} />
+
+            {/* Suscripciones / Precios */}
+            <Route path="/planes" element={<Pricing />} />
+
+            {/* Portal de Cliente Protegido */}
+            <Route path="/dashboard" element={
+              <PrivateRoute>
+                <Dashboard 
+                  setCurrentPage={(page) => {
+                    if (page === 'landing') navigate('/');
+                    else if (page === 'admin') navigate('/admin');
+                  }}
+                  setActiveSection={(section) => {
+                    if (section === 'catalogo') navigate('/menu');
+                    else if (section === 'pricing') navigate('/planes');
+                    else {
+                      navigate('/');
+                      setTimeout(() => _setActiveSection(section), 50);
+                    }
+                  }}
+                />
+              </PrivateRoute>
+            } />
+
+            {/* Portal de Administrador Protegido */}
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminDashboard 
+                  setCurrentPage={(page) => {
+                    if (page === 'landing') navigate('/');
+                    else if (page === 'dashboard') navigate('/dashboard');
+                  }}
+                  setActiveSection={(section) => {
+                    if (section === 'catalogo') navigate('/menu');
+                    else if (section === 'pricing') navigate('/planes');
+                    else {
+                      navigate('/');
+                      setTimeout(() => _setActiveSection(section), 50);
+                    }
+                  }}
+                />
+              </AdminRoute>
+            } />
+
+            {/* Redirección por defecto */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </Suspense>
       </main>
 
-      {/* Floating CTA WhatsApp Widget (Only visible if not on Admin Panel) */}
-      {currentPage !== 'admin' && <WhatsAppButton />}
-
-      {/* Floating AI Assistant (Only visible if not on Admin Panel) */}
-      {currentPage !== 'admin' && (
+      {!isAdminView && <WhatsAppButton />}
+      {!isAdminView && (
         <Suspense fallback={null}>
           <AIPersonalAssistant />
         </Suspense>
@@ -184,7 +234,9 @@ export default function App() {
   return (
     <AuthProvider>
       <MealSelectionProvider>
-        <AppContent />
+        <Router>
+          <AppLayout />
+        </Router>
       </MealSelectionProvider>
     </AuthProvider>
   );

@@ -17,11 +17,7 @@ const Facebook = (props) => (
   </svg>
 );
 
-const TikTok = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
-    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
-  </svg>
-);
+
 
 export default function Contact() {
   const [formState, setFormState] = useState({ name: '', email: '', subject: 'General', message: '' });
@@ -110,9 +106,7 @@ export default function Contact() {
                 <a href="https://www.instagram.com/lunch.loversgdl?fbclid=IwZXh0bgNhZW0CMTAAYnJpZBExdEJnMU1GdEJJUUhOTkVrb3NydGMGYXBwX2lkEDIyMjAzOTE3ODgyMDA4OTIAAR7T20O4i9IGdndw7BgSFha6pYZKmvqFsDvCZYZ546NRI9uCYgMePr7ZWhZ2lw_aem_oeLAHp1KpFijilQpzanBtQ&h=AUCCkZpUyDe8g9xdTA36qb_7iqwa-0SAtDxnd0kTlgRkQ2_UW9MwCMDXwMd2kAut0Z6e6Xst4Qks-vx1sSxy3bQe_8uCNTeBNAjs1g-sF5C3cUSUsa5V-EDb3oYbtkfwTpdudDpuu8jvXO9SJEQ9" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-10 h-10 rounded-full bg-retro-crema text-retro-terracota hover:bg-retro-terracota hover:text-white flex items-center justify-center transition-all shadow-md border border-retro-terracota/10">
                   <Instagram className="w-4.5 h-4.5" />
                 </a>
-                <a href="#" aria-label="TikTok" className="w-10 h-10 rounded-full bg-retro-crema text-retro-terracota hover:bg-retro-terracota hover:text-white flex items-center justify-center transition-all shadow-md border border-retro-terracota/10">
-                  <TikTok className="w-4.5 h-4.5" />
-                </a>
+
                 <a href="https://www.facebook.com/profile.php?id=61577078408315&locale=es_LA" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-retro-crema text-retro-terracota hover:bg-retro-terracota hover:text-white flex items-center justify-center transition-all shadow-md border border-retro-terracota/10">
                   <Facebook className="w-4.5 h-4.5" />
                 </a>

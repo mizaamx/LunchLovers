@@ -126,11 +126,14 @@ export function AuthProvider({ children }) {
     // Update Firebase display name
     await fbUpdateProfile(firebaseUser, { displayName: name });
 
+    const intendedPlan = localStorage.getItem('intended_plan') || 'basic';
+    localStorage.removeItem('intended_plan');
+
     const newUserDoc = {
       name: name,
       email: email,
       phone: phone || '',
-      plan: 'basic',
+      plan: intendedPlan,
       paymentStatus: 'pending',
       address: {
         street: '',
@@ -155,7 +158,7 @@ export function AuthProvider({ children }) {
       emailVerified: firebaseUser.emailVerified,
       isAdmin: false,
       role: 'user',
-      plan: 'basic',
+      plan: intendedPlan,
       paymentStatus: 'pending',
       address: newUserDoc.address,
       selectedMeals: [],
@@ -184,11 +187,14 @@ export function AuthProvider({ children }) {
     if (userDocSnap.exists()) {
       profileData = userDocSnap.data();
     } else {
+      const intendedPlan = localStorage.getItem('intended_plan') || 'basic';
+      localStorage.removeItem('intended_plan');
+
       profileData = {
         name: firebaseUser.displayName || firebaseUser.email.split('@')[0].toUpperCase(),
         email: firebaseUser.email,
         phone: '',
-        plan: 'basic',
+        plan: intendedPlan,
         paymentStatus: 'pending',
         address: {
           street: '',

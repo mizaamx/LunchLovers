@@ -164,6 +164,7 @@ export default function Hero() {
                 src="/hero_food.webp" 
                 alt="Platillo Gourmet Ensalada" 
                 fetchPriority="high"
+                loading="lazy"
                 className="w-72 sm:w-96 md:w-[28rem] h-auto object-contain rounded-full shadow-2xl shadow-retro-terracota/10 border-8 border-white"
               />
 

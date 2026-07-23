@@ -20,7 +20,10 @@ import {
   Check,
   Loader2,
   Coffee,
-  KeyRound
+  KeyRound,
+  Search,
+  Grid,
+  List
 } from 'lucide-react';
 import { db, auth, storage } from '../firebase/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -35,7 +38,8 @@ import {
   addDoc, 
   deleteDoc, 
   getDocs, 
-  where 
+  where,
+  limit
 } from 'firebase/firestore';
 
 // Fallback images for easy select
@@ -141,6 +145,14 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
   const [menuIsActive, setMenuIsActive] = useState(false);
   const [isSavingMenu, setIsSavingMenu] = useState(false);
 
+  // States for search and display optimization
+  const [dishSearch, setDishSearch] = useState('');
+  const [dishCategoryFilter, setDishCategoryFilter] = useState('all');
+  const [dishListView, setDishListView] = useState(true);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [menuCategoryFilter, setMenuCategoryFilter] = useState('all');
+  const [menuShowSelectedOnly, setMenuShowSelectedOnly] = useState(false);
+
   // Load next 4 Mondays for Weekly Menu setup dropdown
   const upcomingMondays = React.useMemo(() => {
     const list = [];
@@ -180,7 +192,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
       if (db) {
         try {
           // 1. Listen to Orders
-          const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+          const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(100));
           unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
             const list = snapshot.docs.map(doc => ({
               id: doc.id,
@@ -227,7 +239,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
           });
 
           // 2.5. Listen to UserSelections
-          const selectionsQuery = query(collection(db, 'UserSelections'));
+          const selectionsQuery = query(collection(db, 'UserSelections'), orderBy('timestamp', 'desc'), limit(150));
           unsubscribeSelections = onSnapshot(selectionsQuery, (snapshot) => {
             const list = snapshot.docs.map(doc => ({
               id: doc.id,
@@ -486,40 +498,154 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
     try {
       const defaultSeedDishes = [
         {
-          name: 'Amanida de Saumon avec Avocat',
-          description: 'Salmón premium a la plancha servido con espinacas frescas y láminas de aguacate con aderezo cítrico.',
-          macros: { calories: 420, protein: 38, carbs: 8, fat: 24 },
-          imageUrl: '/keto_salmon.webp'
+          name: "Pat Thai con Queso",
+          description: "Fideos de arroz salteados al estilo tailandés con vegetales frescos y un toque de queso premium bajo en grasa.",
+          macros: { calories: 380, protein: 15, fat: 10, carbs: 58 },
+          imageUrl: "/dishes/pat_thai_queso.png"
         },
         {
-          name: 'Buddha Bowl de Quinoa avec Edamame',
-          description: 'Mezcla nutritiva de garbanzos, camote asado, edamames, col morada y aguacate sobre una base de quinoa.',
-          macros: { calories: 380, protein: 16, carbs: 52, fat: 12 },
-          imageUrl: '/vegan_bowl.webp'
+          name: "Carne Adobada",
+          description: "Tierna carne de cerdo marinada en adobo de chiles secos y especias, asada a la perfección para un sabor intenso.",
+          macros: { calories: 340, protein: 28, fat: 18, carbs: 6 },
+          imageUrl: "/dishes/carne_adobada.png"
         },
         {
-          name: 'Salată de Pui et Quinoa Fitness',
-          description: 'Pechuga de pollo a la parrilla marinada en finas hierbas con brócoli al vapor y arroz de quinoa integral.',
-          macros: { calories: 410, protein: 45, carbs: 35, fat: 8 },
-          imageUrl: '/protein_chicken.webp'
+          name: "Calabacitas con Pollo",
+          description: "Guisado casero de calabacitas tiernas cocinadas con jugosa pechuga de pollo en cubos, elote y tomate.",
+          macros: { calories: 280, protein: 24, fat: 8, carbs: 16 },
+          imageUrl: "/dishes/calabacitas_pollo.png"
         },
         {
-          name: 'Ensalada de Tofu Crujiente avec Végétaux',
-          description: 'Tofu extra firme en cubos con aguacate fresco, espinacas tiernas y semillas de calabaza tostadas.',
-          macros: { calories: 310, protein: 18, carbs: 10, fat: 22 },
-          imageUrl: '/keto_vegan_salad.webp'
+          name: "Hot Cakes de Espinaca",
+          description: "Esponjosos hot cakes elaborados con harina integral, avena y espinacas tiernas, una opción deliciosa y saludable.",
+          macros: { calories: 290, protein: 10, fat: 6, carbs: 45 },
+          imageUrl: "/dishes/hot_cakes_espinaca.png"
         },
         {
-          name: 'Saumon Glacé Oriental Style Keto',
-          description: 'Lomo de salmón fresco con costra de ajonjolí y verduras asadas al wok bajas en carbohidratos.',
-          macros: { calories: 395, protein: 35, carbs: 11, fat: 21 },
-          imageUrl: '/keto_salmon.webp'
+          name: "Verduras a la Parrilla",
+          description: "Mix de vegetales de estación (calabacín, pimientos, cebolla y champiñón) asados al grill con finas hierbas.",
+          macros: { calories: 120, protein: 3, fat: 4, carbs: 18 },
+          imageUrl: "/dishes/verduras_parrilla.png"
         },
         {
-          name: 'Curry de Poids Chiches et Quinoa Fit',
-          description: 'Garbanzos y vegetales de temporada salteados en curry de coco y jengibre, enriquecidos con proteína vegetal.',
-          macros: { calories: 440, protein: 22, carbs: 48, fat: 14 },
-          imageUrl: '/vegan_bowl.webp'
+          name: "Fajitas de Cerdo con Pimientos",
+          description: "Tiras magras de cerdo salteadas con una mezcla tricolor de pimientos y cebolla caramelizada, sazonadas saludablemente.",
+          macros: { calories: 320, protein: 26, fat: 14, carbs: 10 },
+          imageUrl: "/dishes/fajitas_cerdo_pimientos.png"
+        },
+        {
+          name: "Pescado con Puré de Coliflor",
+          description: "Filete de pescado blanco cocinado al vapor con finas hierbas, acompañado de un cremoso puré de coliflor.",
+          macros: { calories: 250, protein: 28, fat: 7, carbs: 12 },
+          imageUrl: "/dishes/pescado_coliflor.png?v=4"
+        },
+        {
+          name: "Pasta con Crema de Guajillo",
+          description: "Pasta al dente bañada en una cremosa salsa ligera de chile guajillo, sazonada con un toque de ajo y especias.",
+          macros: { calories: 360, protein: 10, fat: 9, carbs: 55 },
+          imageUrl: "/dishes/pasta_crema_guajillo.png"
+        },
+        {
+          name: "Elote con Queso",
+          description: "Elote tierno desgranado cocido al vapor, servido con queso fresco rallado de rancho y una ligera pizca de chile.",
+          macros: { calories: 180, protein: 6, fat: 5, carbs: 28 },
+          imageUrl: "/dishes/elote_queso.png?v=4"
+        },
+        {
+          name: "Manzana con Crema de Maní",
+          description: "Rodajas de manzana fresca y crujiente acompañadas de una porción de crema de maní 100% natural.",
+          macros: { calories: 220, protein: 5, fat: 12, carbs: 24 },
+          imageUrl: "/dishes/manzana_crema_mani.png"
+        },
+        {
+          name: "Pollo al Limón con Puré de Papa",
+          description: "Suprema de pollo marinada al limón y finas hierbas a la plancha, servida con un suave puré de papa rústico.",
+          macros: { calories: 390, protein: 32, fat: 10, carbs: 38 },
+          imageUrl: "/dishes/pollo_limon_pure_papa.png"
+        },
+        {
+          name: "Espagueti a la Boloñesa de Lentejas",
+          description: "Espagueti de trigo integral bañado en una sustanciosa salsa pomodoro casera enriquecida con lentejas tiernas.",
+          macros: { calories: 350, protein: 14, fat: 5, carbs: 58 },
+          imageUrl: "/dishes/espagueti_bolonesa_lentejas.png"
+        },
+        {
+          name: "Tortas de Papa",
+          description: "Tortitas de puré de papa sazonadas con perejil y queso cotija, doradas con un mínimo de aceite.",
+          macros: { calories: 260, protein: 6, fat: 8, carbs: 40 },
+          imageUrl: "/dishes/tortas_papa.png"
+        },
+        {
+          name: "Tostada de Queso y Fruta de Temporada",
+          description: "Tostada horneada untada con queso ricota fresco y coronada con finas rebanadas de fruta fresca de la estación.",
+          macros: { calories: 190, protein: 6, fat: 4, carbs: 28 },
+          imageUrl: "/dishes/tostada_fruta.png?v=4"
+        },
+        {
+          name: "Omelette de Espinaca con Pollo",
+          description: "Esponjoso omelette de claras de huevo relleno de espinacas baby salteadas y pechuga de pollo deshebrada.",
+          macros: { calories: 240, protein: 26, fat: 8, carbs: 4 },
+          imageUrl: "/dishes/omelette_espinaca_pollo.png"
+        },
+        {
+          name: "Pasta Alfredo",
+          description: "Pasta Fettuccine bañada en una version ligera de la clásica salsa Alfredo, hecha con yogur griego y queso parmesano.",
+          macros: { calories: 380, protein: 12, fat: 11, carbs: 52 },
+          imageUrl: "/dishes/pasta_alfredo.png"
+        },
+        {
+          name: "Cerdo con Elote",
+          description: "Trozos tiernos de carne de cerdo guisados con granos de elote tierno en salsa verde especial.",
+          macros: { calories: 310, protein: 24, fat: 15, carbs: 8 },
+          imageUrl: "/dishes/cerdo_elotes.png"
+        },
+        {
+          name: "Pescado Crocante al Ajo y Papa",
+          description: "Filete de pescado con costra crocante de pan molido integral y ajo asado, servido con gajos de papa al horno.",
+          macros: { calories: 330, protein: 26, fat: 8, carbs: 35 },
+          imageUrl: "/dishes/pescado_crocante_ajo_papa.png"
+        },
+        {
+          name: "Sándwich de Pavo",
+          description: "Sándwich en pan de granos enteros con pechuga de pavo ahumada, lechuga romana, jitomate y aguacate.",
+          macros: { calories: 290, protein: 18, fat: 9, carbs: 32 },
+          imageUrl: "/dishes/sandwich_pavo.png"
+        },
+        {
+          name: "Yogurt con Granola",
+          description: "Copa de yogur griego natural descremado servido con granola crujiente baja en azúcar y un toque de miel.",
+          macros: { calories: 210, protein: 12, fat: 6, carbs: 25 },
+          imageUrl: "/dishes/yogurt_granola.png"
+        },
+        {
+          name: "Enchiladas Placeras",
+          description: "Tres enchiladas rellenas de queso fresco dobladas en salsa de chiles secos, servidas con papas y zanahorias al vapor.",
+          macros: { calories: 410, protein: 14, fat: 12, carbs: 58 },
+          imageUrl: "/dishes/chilaquiles_verdes.png"
+        },
+        {
+          name: "Pescado al Pastor",
+          description: "Filete de pescado blanco marinado en adobo tradicional al pastor con achiote y piña asada al grill.",
+          macros: { calories: 290, protein: 28, fat: 9, carbs: 18 },
+          imageUrl: "/dishes/soya_pastor.png"
+        },
+        {
+          name: "Yakimeshi de Soya",
+          description: "Arroz estilo yakimeshi salteado con verduras picadas y cubos de soya marinada en soya baja en sodio.",
+          macros: { calories: 320, protein: 12, fat: 6, carbs: 54 },
+          imageUrl: "/dishes/pasta_oriental.png"
+        },
+        {
+          name: "Tapioca con Coco",
+          description: "Postre cremoso de perlas de tapioca cocidas en leche de coco ligera e infusionadas con vainilla natural.",
+          macros: { calories: 180, protein: 1, fat: 4, carbs: 34 },
+          imageUrl: "/dishes/yogurt_chia.png"
+        },
+        {
+          name: "Papa con Huevo",
+          description: "Clásico revuelto de papas cocidas al vapor salteadas con huevo y sazonadas con pimienta negra recién molida.",
+          macros: { calories: 250, protein: 12, fat: 9, carbs: 28 },
+          imageUrl: "/dishes/huevo_tostada.png"
         }
       ];
 
@@ -1354,6 +1480,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                           <img
                             src={imageUrl}
                             alt="Preview"
+                            loading="lazy"
                             className="w-12 h-12 object-cover rounded-xl border border-slate-800"
                             onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                           />
@@ -1379,6 +1506,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                             <img
                               src={imagePreview || imageUrl}
                               alt="Preview"
+                              loading="lazy"
                               className="w-12 h-12 object-cover rounded-xl border border-slate-800 flex-shrink-0"
                               onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                             />
@@ -1472,63 +1600,229 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
 
                 {/* Dishes inventory list */}
                 {dishes.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dishes.map((dish) => (
-                      <div key={dish.id} className="bg-slate-950 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col text-left">
-                        <div className="relative h-44 overflow-hidden bg-slate-900">
-                          <img
-                            src={dish.imageUrl}
-                            alt={dish.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
-                          />
-                          <div className="absolute top-3 right-3 bg-slate-950/80 px-2 py-0.5 rounded text-[10px] font-black text-retro-crema border border-slate-800">
-                            {dish.macros?.calories || 0} Kcal
-                          </div>
-                        </div>
-                        <div className="p-4 flex-grow flex flex-col justify-between">
-                          <div>
-                            <h4 className="font-extrabold text-sm text-retro-crema leading-snug line-clamp-1">{dish.name}</h4>
-                            <p className="text-[11px] text-slate-400 font-semibold mt-1 leading-normal line-clamp-2 min-h-[32px]">
-                              {dish.description}
-                            </p>
-                            
-                            <div className="grid grid-cols-3 gap-1.5 text-center mt-3 p-2 bg-slate-900 border border-slate-800/40 rounded-xl text-[10px] font-bold text-slate-300">
-                              <div>
-                                <span className="text-[8px] text-slate-500 uppercase block">Pro</span>
-                                <span>{dish.macros?.protein || 0}g</span>
-                              </div>
-                              <div>
-                                <span className="text-[8px] text-slate-500 uppercase block">Grasa</span>
-                                <span>{dish.macros?.fat || 0}g</span>
-                              </div>
-                              <div>
-                                <span className="text-[8px] text-slate-500 uppercase block">Carb</span>
-                                <span>{dish.macros?.carbs || 0}g</span>
-                              </div>
-                            </div>
+                  (() => {
+                    const filteredDishes = dishes.filter(dish => {
+                      const matchesSearch = dish.name.toLowerCase().includes(dishSearch.toLowerCase()) || 
+                                            (dish.description && dish.description.toLowerCase().includes(dishSearch.toLowerCase()));
+                      const matchesCategory = dishCategoryFilter === 'all' || dish.category === dishCategoryFilter;
+                      return matchesSearch && matchesCategory;
+                    });
+                    return (
+                      <>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-4 bg-slate-950 rounded-2xl border border-slate-800/80">
+                          {/* Buscador */}
+                          <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                            <input
+                              type="text"
+                              placeholder="Buscar platillo..."
+                              value={dishSearch}
+                              onChange={(e) => setDishSearch(e.target.value)}
+                              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl text-slate-100 text-xs font-bold focus:outline-none focus:border-retro-mostaza transition-colors"
+                            />
                           </div>
 
-                          <div className="flex justify-end space-x-1.5 mt-4 pt-3 border-t border-slate-900">
+                          {/* Filtros de Categoría */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                              { value: 'all', label: 'Todos' },
+                              { value: 'platillo', label: 'Platillos' },
+                              { value: 'snack', label: 'Snacks' },
+                              { value: 'bebida', label: 'Bebidas' }
+                            ].map((f) => (
+                              <button
+                                key={f.value}
+                                type="button"
+                                onClick={() => setDishCategoryFilter(f.value)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                  dishCategoryFilter === f.value
+                                    ? 'bg-retro-mostaza text-slate-950 border-retro-mostaza font-extrabold shadow-sm'
+                                    : 'bg-slate-900 border-slate-850 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                {f.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Selector de Vista */}
+                          <div className="flex items-center space-x-1 p-0.5 bg-slate-900 border border-slate-850 rounded-xl">
                             <button
-                              onClick={() => handleOpenDishForm(dish)}
-                              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors"
-                              title="Editar"
+                              type="button"
+                              onClick={() => setDishListView(true)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                dishListView
+                                  ? 'bg-retro-terracota text-white'
+                                  : 'text-slate-500 hover:text-slate-300'
+                              }`}
+                              title="Vista de Lista"
                             >
-                              <Edit2 className="w-3.5 h-3.5" />
+                              <List className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => setDishToDelete(dish)}
-                              className="p-2 bg-red-950/20 hover:bg-red-950 border border-red-900/40 hover:border-red-900 text-red-400 hover:text-red-200 rounded-lg transition-colors"
-                              title="Eliminar"
+                              type="button"
+                              onClick={() => setDishListView(false)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                !dishListView
+                                  ? 'bg-retro-terracota text-white'
+                                  : 'text-slate-500 hover:text-slate-300'
+                              }`}
+                              title="Vista de Cuadrícula"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Grid className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+
+                        {dishListView ? (
+                          <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-slate-950">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-slate-900/50 text-slate-400 border-b border-slate-800 font-black uppercase text-[10px] tracking-wider">
+                                  <th className="p-4 w-16">Imagen</th>
+                                  <th className="p-4">Nombre y Descripción</th>
+                                  <th className="p-4 w-24">Categoría</th>
+                                  <th className="p-4 w-24 text-center">Calorías</th>
+                                  <th className="p-4 w-44">Macronutrientes (P / G / C)</th>
+                                  <th className="p-4 w-28 text-right">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-850/60 font-medium">
+                                {filteredDishes.length > 0 ? (
+                                  filteredDishes.map((dish) => (
+                                    <tr key={dish.id} className="hover:bg-slate-900/30 transition-colors">
+                                      <td className="p-4">
+                                        <img
+                                          src={dish.imageUrl}
+                                          alt={dish.name}
+                                          className="w-12 h-12 object-cover rounded-xl border border-slate-800"
+                                          onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                                        />
+                                      </td>
+                                      <td className="p-4 text-left">
+                                        <span className="font-extrabold text-sm text-retro-crema block leading-tight">{dish.name}</span>
+                                        <span className="text-[10px] text-slate-500 font-semibold block mt-1 line-clamp-1 max-w-lg">{dish.description}</span>
+                                      </td>
+                                      <td className="p-4">
+                                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                          dish.category === 'snack' 
+                                            ? 'bg-purple-950/20 text-purple-300 border-purple-900/40' 
+                                            : dish.category === 'bebida'
+                                            ? 'bg-cyan-950/20 text-cyan-300 border-cyan-900/40'
+                                            : 'bg-retro-mostaza/10 text-retro-mostaza border-retro-mostaza/20'
+                                        }`}>
+                                          {dish.category || 'platillo'}
+                                        </span>
+                                      </td>
+                                      <td className="p-4 text-center font-bold text-slate-200">
+                                        {dish.macros?.calories || 0} kcal
+                                      </td>
+                                      <td className="p-4">
+                                        <div className="flex items-center space-x-2 text-[10px] font-bold">
+                                          <span className="text-emerald-400 bg-emerald-950/20 border border-emerald-900/40 px-2 py-0.5 rounded">P: {dish.macros?.protein || 0}g</span>
+                                          <span className="text-amber-400 bg-amber-950/20 border border-amber-900/40 px-2 py-0.5 rounded">G: {dish.macros?.fat || 0}g</span>
+                                          <span className="text-sky-400 bg-sky-950/20 border border-sky-900/40 px-2 py-0.5 rounded">C: {dish.macros?.carbs || 0}g</span>
+                                        </div>
+                                      </td>
+                                      <td className="p-4 text-right">
+                                        <div className="flex justify-end items-center space-x-2">
+                                          <button
+                                            onClick={() => handleOpenDishForm(dish)}
+                                            className="p-1.5 bg-slate-900 hover:bg-slate-800 text-retro-crema hover:text-white rounded-lg border border-slate-850 hover:border-slate-800 transition-all"
+                                            title="Editar"
+                                          >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => setDishToDelete(dish)}
+                                            className="p-1.5 bg-red-950/10 hover:bg-red-950 text-red-400 hover:text-red-200 rounded-lg border border-red-950/20 hover:border-red-900 transition-all"
+                                            title="Eliminar"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan="6" className="p-8 text-center text-slate-500 font-bold">
+                                      No se encontraron platillos con los filtros aplicados.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredDishes.length > 0 ? (
+                              filteredDishes.map((dish) => (
+                                <div key={dish.id} className="bg-slate-950 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col text-left">
+                                  <div className="relative h-44 overflow-hidden bg-slate-900">
+                                    <img
+                                      src={dish.imageUrl}
+                                      alt={dish.name}
+                                      loading="lazy"
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                                    />
+                                    <div className="absolute top-3 right-3 bg-slate-950/80 px-2 py-0.5 rounded text-[10px] font-black text-retro-crema border border-slate-800">
+                                      {dish.macros?.calories || 0} Kcal
+                                    </div>
+                                  </div>
+                                  <div className="p-4 flex-grow flex flex-col justify-between">
+                                    <div>
+                                      <h4 className="font-extrabold text-sm text-retro-crema leading-snug line-clamp-1">{dish.name}</h4>
+                                      <p className="text-[11px] text-slate-400 font-semibold mt-1 leading-normal line-clamp-2 min-h-[32px]">
+                                        {dish.description}
+                                      </p>
+                                      
+                                      <div className="grid grid-cols-3 gap-1.5 text-center mt-3 p-2 bg-slate-900 border border-slate-800/40 rounded-xl text-[10px] font-bold text-slate-300">
+                                        <div>
+                                          <span className="text-[8px] text-slate-500 uppercase block">Pro</span>
+                                          <span>{dish.macros?.protein || 0}g</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[8px] text-slate-500 uppercase block">Grasa</span>
+                                          <span>{dish.macros?.fat || 0}g</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[8px] text-slate-500 uppercase block">Carb</span>
+                                          <span>{dish.macros?.carbs || 0}g</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex justify-end space-x-1.5 mt-4 pt-3 border-t border-slate-900">
+                                      <button
+                                        onClick={() => handleOpenDishForm(dish)}
+                                        className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                        title="Editar"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => setDishToDelete(dish)}
+                                        className="p-2 bg-red-950/20 hover:bg-red-950 border border-red-900/40 hover:border-red-900 text-red-400 hover:text-red-200 rounded-lg transition-colors"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="col-span-full py-8 text-center text-slate-500 font-bold">
+                                No se encontraron platillos con los filtros aplicados.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
                 ) : (
                   <div className="py-16 text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl">
                     <Utensils className="w-8 h-8 text-slate-600 mx-auto mb-2" />
@@ -1650,40 +1944,111 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                 </div>
 
                 {dishes.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {dishes.map((dish) => {
+                  (() => {
+                    const filteredMenuDishes = dishes.filter(dish => {
+                      const matchesSearch = dish.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
+                                            (dish.description && dish.description.toLowerCase().includes(menuSearch.toLowerCase()));
+                      const matchesCategory = menuCategoryFilter === 'all' || dish.category === menuCategoryFilter;
                       const isSelected = (weeklyMenuByDay[activeWeeklyMenuDay] || []).includes(dish.id);
-                      return (
-                        <div
-                          key={dish.id}
-                          onClick={() => handleToggleWeeklyDish(dish.id)}
-                          className={`p-3.5 rounded-2xl border cursor-pointer flex items-center space-x-3.5 transition-all duration-200 ${
-                            isSelected
-                              ? 'bg-retro-terracota/10 border-retro-terracota text-white shadow-md'
-                              : 'bg-slate-950 border-slate-850 text-slate-300 hover:border-slate-800'
-                          }`}
-                        >
-                          <img
-                            src={dish.imageUrl}
-                            alt={dish.name}
-                            className="w-12 h-12 object-cover rounded-xl border border-slate-800"
-                            onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
-                          />
-                          <div className="flex-grow text-left">
-                            <h5 className="font-extrabold text-xs text-retro-crema line-clamp-1">{dish.name}</h5>
-                            <span className="text-[10px] text-slate-500 font-semibold">{dish.macros?.calories || 0} Kcal • {dish.macros?.protein || 0}g Pro</span>
+                      const matchesSelected = !menuShowSelectedOnly || isSelected;
+                      return matchesSearch && matchesCategory && matchesSelected;
+                    });
+                    return (
+                      <>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 p-4 bg-slate-950 rounded-2xl border border-slate-800/80">
+                          {/* Buscador */}
+                          <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                            <input
+                              type="text"
+                              placeholder="Buscar platillo..."
+                              value={menuSearch}
+                              onChange={(e) => setMenuSearch(e.target.value)}
+                              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-xl text-slate-100 text-xs font-bold focus:outline-none focus:border-retro-mostaza transition-colors"
+                            />
                           </div>
-                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${
-                            isSelected 
-                              ? 'bg-retro-terracota border-retro-terracota text-white' 
-                              : 'border-slate-700 bg-slate-900'
-                          }`}>
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+
+                          {/* Filtros de Categoría */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                              { value: 'all', label: 'Todos' },
+                              { value: 'platillo', label: 'Platillos' },
+                              { value: 'snack', label: 'Snacks' },
+                              { value: 'bebida', label: 'Bebidas' }
+                            ].map((f) => (
+                              <button
+                                key={f.value}
+                                type="button"
+                                onClick={() => setMenuCategoryFilter(f.value)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                  menuCategoryFilter === f.value
+                                    ? 'bg-retro-mostaza text-slate-950 border-retro-mostaza font-extrabold shadow-sm'
+                                    : 'bg-slate-900 border-slate-850 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                {f.label}
+                              </button>
+                            ))}
                           </div>
+
+                          {/* Toggle Seleccionados */}
+                          <button
+                            type="button"
+                            onClick={() => setMenuShowSelectedOnly(!menuShowSelectedOnly)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all border uppercase tracking-wider ${
+                              menuShowSelectedOnly
+                                ? 'bg-retro-terracota text-white border-retro-terracota'
+                                : 'bg-slate-900 border-slate-850 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span>{menuShowSelectedOnly ? 'Mostrar Todo el Inventario' : 'Ver Solo Seleccionados'}</span>
+                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        {filteredMenuDishes.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredMenuDishes.map((dish) => {
+                              const isSelected = (weeklyMenuByDay[activeWeeklyMenuDay] || []).includes(dish.id);
+                              return (
+                                <div
+                                  key={dish.id}
+                                  onClick={() => handleToggleWeeklyDish(dish.id)}
+                                  className={`p-3.5 rounded-2xl border cursor-pointer flex items-center space-x-3.5 transition-all duration-200 ${
+                                    isSelected
+                                      ? 'bg-retro-terracota/10 border-retro-terracota text-white shadow-md'
+                                      : 'bg-slate-950 border-slate-850 text-slate-300 hover:border-slate-800'
+                                  }`}
+                                >
+                                  <img
+                                    src={dish.imageUrl}
+                                    alt={dish.name}
+                                    loading="lazy"
+                                    className="w-12 h-12 object-cover rounded-xl border border-slate-800"
+                                    onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                                  />
+                                  <div className="flex-grow text-left">
+                                    <h5 className="font-extrabold text-xs text-retro-crema line-clamp-1">{dish.name}</h5>
+                                    <span className="text-[10px] text-slate-500 font-semibold">{dish.macros?.calories || 0} Kcal • {dish.macros?.protein || 0}g Pro</span>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    isSelected 
+                                      ? 'bg-retro-terracota border-retro-terracota text-white' 
+                                      : 'border-slate-700 bg-slate-900'
+                                  }`}>
+                                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="py-12 text-center text-slate-500 font-bold border border-dashed border-slate-800 rounded-2xl w-full">
+                            No se encontraron platillos con los filtros aplicados.
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
                 ) : (
                   <div className="py-12 text-center text-slate-500 font-bold border border-dashed border-slate-800 rounded-2xl">
                     No hay platillos en el inventario para configurar el menú.
@@ -2329,6 +2694,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                                   <img
                                     src={dish.image || '/keto_salmon.webp'}
                                     alt={dish.name}
+                                    loading="lazy"
                                     className="w-8 h-8 object-cover rounded-lg border border-slate-800"
                                     onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                                   />
@@ -2361,6 +2727,7 @@ export default function AdminDashboard({ setCurrentPage, setActiveSection }) {
                           <img
                             src={dish.image || '/keto_salmon.webp'}
                             alt={dish.name}
+                            loading="lazy"
                             className="w-8 h-8 object-cover rounded-lg border border-slate-800"
                             onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                           />

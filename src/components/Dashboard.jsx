@@ -417,6 +417,7 @@ export default function Dashboard({ setCurrentPage, setActiveSection }) {
                                 <img
                                   src={meal.imageUrl}
                                   alt={meal.name}
+                                  loading="lazy"
                                   className="w-10 h-10 object-cover rounded-xl border border-retro-terracota/10"
                                   onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                                 />

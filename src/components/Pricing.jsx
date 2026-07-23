@@ -27,6 +27,30 @@ export default function Pricing() {
   const [calorieTier, setCalorieTier] = useState('800'); // '800' or '600'
   const [mealsPerDay, setMealsPerDay] = useState(1); // 1, 2, or 3
 
+  // Resume checkout flow once the user logs in / registers
+  React.useEffect(() => {
+    if (user) {
+      const intendedPlanId = localStorage.getItem('intended_plan');
+      if (intendedPlanId) {
+        localStorage.removeItem('intended_plan');
+        
+        let planName = '';
+        if (intendedPlanId === 'godinez') planName = 'Paquete Godínez';
+        else if (intendedPlanId === 'comida_diaria') planName = 'Comida Diaria (Flexible)';
+        else if (intendedPlanId === 'cal800_1') planName = 'Plan Hearty Lovers (1 Comida)';
+        else if (intendedPlanId === 'cal800_2') planName = 'Plan Hearty Lovers (2 Comidas)';
+        else if (intendedPlanId === 'cal800_3') planName = 'Plan Hearty Lovers (3 Comidas)';
+        else if (intendedPlanId === 'cal600_1') planName = 'Plan Light Lovers (1 Comida)';
+        else if (intendedPlanId === 'cal600_2') planName = 'Plan Light Lovers (2 Comidas)';
+        else if (intendedPlanId === 'cal600_3') planName = 'Plan Light Lovers (3 Comidas)';
+        
+        if (planName) {
+          handleCheckout(intendedPlanId, planName);
+        }
+      }
+    }
+  }, [user]);
+
   const getCaloriePlanDetails = () => {
     if (calorieTier === '800') {
       if (mealsPerDay === 1) {
@@ -169,6 +193,7 @@ export default function Pricing() {
 
   const handleCheckout = async (planId, planName) => {
     if (!user) {
+      localStorage.setItem('intended_plan', planId);
       setShowAuthModal(true);
       return;
     }
@@ -215,7 +240,7 @@ export default function Pricing() {
 
       // Delay de cortesía de 1.5s
       setTimeout(() => {
-        window.location.href = `${window.location.origin}/#dashboard`;
+        window.location.href = `${window.location.origin}/dashboard`;
         window.location.reload();
       }, 1500);
 

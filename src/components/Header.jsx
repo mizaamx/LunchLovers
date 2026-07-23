@@ -4,8 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 import AuthModal from './AuthModal';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Header({ activeSection, setActiveSection, currentPage, setCurrentPage }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -19,8 +22,8 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
         window.requestAnimationFrame(() => {
           setIsScrolled(window.scrollY > 20);
           
-          if (currentPage === 'landing') {
-            const sections = ['inicio', 'como-funciona', 'catalogo', 'pricing', 'testimonios', 'contacto'];
+          if (location.pathname === '/') {
+            const sections = ['inicio', 'como-funciona', 'testimonios', 'contacto'];
             const scrollPosition = window.scrollY + 120;
 
             for (const section of sections) {
@@ -42,7 +45,7 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [setActiveSection, currentPage]);
+  }, [setActiveSection, location.pathname]);
 
   const navItems = [
     { id: 'inicio', label: 'Inicio', target: 'landing' },
@@ -55,11 +58,36 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
   const handleNavClick = (itemId, targetPage) => {
     setIsMobileMenuOpen(false);
     
-    if (targetPage === 'landing') {
-      setCurrentPage('landing');
-      setActiveSection(itemId);
-      
-      setTimeout(() => {
+    if (itemId === 'catalogo') {
+      navigate('/menu');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (itemId === 'pricing') {
+      navigate('/planes');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (targetPage === 'dashboard') {
+      navigate('/dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (targetPage === 'admin') {
+      navigate('/admin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Secciones de la landing (inicio, como-funciona, testimonios, contacto)
+      if (location.pathname !== '/') {
+        navigate('/');
+        // Esperamos a que la página de inicio se monte antes de hacer scroll
+        setTimeout(() => {
+          const element = document.getElementById(itemId);
+          if (element) {
+            const offset = 80;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.scrollY - offset;
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          }
+        }, 150);
+      } else {
         const element = document.getElementById(itemId);
         if (element) {
           const offset = 80;
@@ -70,23 +98,13 @@ export default function Header({ activeSection, setActiveSection, currentPage, s
             behavior: 'smooth'
           });
         }
-      }, currentPage === 'landing' ? 0 : 100);
-    } else if (targetPage === 'dashboard') {
-      setCurrentPage('dashboard');
-      setActiveSection('dashboard');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (targetPage === 'admin') {
-      setCurrentPage('admin');
-      setActiveSection('admin');
-      window.location.hash = '#admin';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    setCurrentPage('landing');
-    setActiveSection('inicio');
+    navigate('/');
   };
 
   return (

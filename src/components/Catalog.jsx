@@ -525,6 +525,7 @@ export default function Catalog() {
                       <img
                         src={dish.imageUrl}
                         alt={dish.name}
+                        loading="lazy"
                         className="w-full h-full object-cover transition-transform duration-350 hover:scale-102"
                         onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                       />
@@ -766,6 +767,7 @@ export default function Catalog() {
                             <img
                               src={dish.imageUrl}
                               alt={dish.name}
+                              loading="lazy"
                               className="w-8 h-8 object-cover rounded-lg border border-retro-terracota/10"
                               onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                             />
@@ -851,6 +853,7 @@ export default function Catalog() {
                 <img
                   src={selectedDishForModal.imageUrl}
                   alt={selectedDishForModal.name}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
                 />

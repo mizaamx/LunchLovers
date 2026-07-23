@@ -150,46 +150,46 @@ export default function AIPersonalAssistant() {
               {/* Quick Suggestions Buttons */}
               <div className="px-4 py-2 border-t border-retro-terracota/5 flex items-center space-x-1.5 overflow-x-auto whitespace-nowrap scrollbar-none">
                 <button
-                  onClick={() => handleSendMessage('¿De qué trata el Paquete Godínez y qué comidas incluye?')}
+                  onClick={() => handleSendMessage('Ayúdame a armar un menú semanal enfocado en perder peso / grasa.')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Paquete Godínez
+                  Bajar de Peso
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de Hearty Lovers (comidas completas)')}
+                  onClick={() => handleSendMessage('¿Cómo planifico mi menú semanal de Lunch Lovers para ganar masa muscular?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Plan Hearty Lovers
+                  Ganar Músculo
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Recomiéndame un menú semanal para el Plan de Light Lovers (comidas ligeras)')}
+                  onClick={() => handleSendMessage('¿Cuáles de los platillos del menú de esta semana son bajos en carbohidratos (Keto)?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Plan Light Lovers
+                  Menú Keto
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cómo funciona la opción de Comida Diaria Flexible?')}
+                  onClick={() => handleSendMessage('Recomiéndame los platillos más altos en proteína para esta semana.')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Comida Diaria
+                  Altos en Proteína
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cuál es su zona de reparto en Guadalajara y cómo funciona el envío?')}
+                  onClick={() => handleSendMessage('¿Qué platillos del menú semanal son ideales para una cena ligera y saludable?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Zona de Reparto
+                  Cena Ligera
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cuáles de los platillos del menú son bajos en carbohidratos (Keto)?')}
+                  onClick={() => handleSendMessage('Recomiéndame opciones vegetarianas del menú de esta semana.')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Opciones Keto
+                  Opciones Vegetarianas
                 </button>
                 <button
-                  onClick={() => handleSendMessage('¿Cómo me pongo en contacto con soporte si tengo alguna duda o problema con mi pedido?')}
+                  onClick={() => handleSendMessage('¿Cómo puedo calcular cuántas calorías y macros necesito consumir al día?')}
                   className="px-3 py-1 bg-white hover:bg-retro-crema/50 border border-retro-terracota/10 rounded-full text-[10px] font-black text-retro-terracota"
                 >
-                  Soporte
+                  Calcular Calorías
                 </button>
               </div>
             </div>
