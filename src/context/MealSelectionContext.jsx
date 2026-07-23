@@ -113,6 +113,17 @@ export function MealSelectionProvider({ children }) {
     localStorage.setItem('meal_simulated_mode', simulatedMode);
   }, [simulatedMode]);
 
+  // Persist local selection draft to prevent accidental loss
+  useEffect(() => {
+    if (user?.uid && selectedDays && Object.keys(selectedDays).length > 0) {
+      try {
+        localStorage.setItem(`lunchlovers_draft_selection_${user.uid}`, JSON.stringify(selectedDays));
+      } catch (e) {
+        console.warn("Could not save selection draft:", e);
+      }
+    }
+  }, [user?.uid, selectedDays]);
+
   // Determine current active date based on simulation mode
   const getSimulatedDate = () => {
     if (simulatedMode === 'weekend') {
@@ -166,6 +177,21 @@ export function MealSelectionProvider({ children }) {
         ...doc.data()
       }));
       setAllDishes(dishesList);
+
+      // Local draft backup recovery if present and user logged in
+      if (user?.uid) {
+        try {
+          const draft = localStorage.getItem(`lunchlovers_draft_selection_${user.uid}`);
+          if (draft) {
+            const parsedDraft = JSON.parse(draft);
+            if (parsedDraft && typeof parsedDraft === 'object') {
+              setSelectedDays(parsedDraft);
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to load local draft selections:", e);
+        }
+      }
 
       const plan = user?.plan || null;
 

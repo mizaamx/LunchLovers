@@ -8,6 +8,8 @@ import HowItWorks from './components/HowItWorks';
 import WhatsAppButton from './components/WhatsAppButton';
 import RequirePaymentGate from './components/RequirePaymentGate';
 
+import Footer from './components/Footer';
+
 // Helper para reintentar la carga en caso de ChunkLoadError por nuevos despliegues
 const lazyWithRetry = (importFn) => {
   return lazy(async () => {
@@ -224,6 +226,22 @@ function AppLayout() {
         <Suspense fallback={null}>
           <AIPersonalAssistant />
         </Suspense>
+      )}
+      {!isAdminView && (
+        <Footer 
+          setActiveSection={(section) => {
+            if (section === 'catalogo') navigate('/menu');
+            else if (section === 'pricing') navigate('/planes');
+            else {
+              if (location.pathname !== '/') {
+                navigate('/');
+                setTimeout(() => _setActiveSection(section), 50);
+              } else {
+                _setActiveSection(section);
+              }
+            }
+          }}
+        />
       )}
 
     </div>

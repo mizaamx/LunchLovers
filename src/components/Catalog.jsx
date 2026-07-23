@@ -74,6 +74,8 @@ const getDishTags = (dish) => {
 
 export default function Catalog() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('todos');
+  const [showSummaryDrawer, setShowSummaryDrawer] = useState(false);
   const [activeDay, setActiveDay] = useState('lunes');
   const [activeSlot, setActiveSlot] = useState('comida');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -226,9 +228,19 @@ export default function Catalog() {
   const filteredDishes = useMemo(() => {
     return displayDishes.filter((dish) => {
       const matchesSearch = (dish.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
+      const cat = (dish.category || '').toLowerCase();
+      const tags = getDishTags(dish);
+
+      let matchesCategory = true;
+      if (categoryFilter === 'platillos') matchesCategory = cat === 'platillo' || cat === 'comida' || cat === 'cena' || !cat;
+      else if (categoryFilter === 'snacks') matchesCategory = cat === 'snack' || cat === 'snacks';
+      else if (categoryFilter === 'keto') matchesCategory = tags.includes('Keto');
+      else if (categoryFilter === 'vegano') matchesCategory = tags.includes('Vegano');
+      else if (categoryFilter === 'proteina') matchesCategory = tags.includes('Alto en Proteína');
+
+      return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, displayDishes]);
+  }, [searchQuery, categoryFilter, displayDishes]);
 
   return (
     <RequirePaymentGate>
@@ -265,17 +277,58 @@ export default function Catalog() {
             </p>
           </div>
 
-          {/* Search bar */}
-          <div className="mt-6 md:mt-0 relative w-full md:w-80">
-            <input
-              type="text"
-              placeholder="Buscar platillo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-2xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/20 focus:border-retro-terracota text-retro-terracota placeholder-retro-terracota/40 text-xs font-bold bg-white"
-            />
-            <Search className="w-4.5 h-4.5 text-retro-terracota/40 absolute left-3.5 top-3.5" />
+          {/* Search bar & Drawer Toggle */}
+          <div className="mt-6 md:mt-0 flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <div className="relative w-full sm:w-72">
+              <input
+                type="text"
+                placeholder="Buscar platillo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-retro-terracota/20 focus:outline-none focus:ring-2 focus:ring-retro-terracota/20 focus:border-retro-terracota text-retro-terracota placeholder-retro-terracota/40 text-xs font-bold bg-white shadow-xs"
+              />
+              <Search className="w-4.5 h-4.5 text-retro-terracota/40 absolute left-3.5 top-3.5" />
+            </div>
+
+            {user && plan && (
+              <button
+                type="button"
+                onClick={() => setShowSummaryDrawer(true)}
+                className="w-full sm:w-auto px-4 py-3 bg-retro-terracota hover:bg-retro-terracota/90 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center space-x-2 shadow-md transition-transform active:scale-95"
+              >
+                <span>📋</span>
+                <span>Ver Mi Menú</span>
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* CATEGORY FILTER PILLS BAR */}
+        <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {[
+            { id: 'todos', label: 'Todos', emoji: '🍽️' },
+            { id: 'platillos', label: 'Fondos', emoji: '🍲' },
+            { id: 'snacks', label: 'Snacks', emoji: '🍎' },
+            { id: 'keto', label: 'Keto', emoji: '🥑' },
+            { id: 'vegano', label: 'Vegano', emoji: '🌱' },
+            { id: 'proteina', label: 'Alto en Proteína', emoji: '🥩' },
+          ].map((cat) => {
+            const isActive = categoryFilter === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setCategoryFilter(cat.id)}
+                className={`flex-shrink-0 flex items-center space-x-1.5 px-4 py-2 rounded-2xl text-xs font-black transition-all ${
+                  isActive
+                    ? 'bg-retro-terracota text-white shadow-md shadow-retro-terracota/15 scale-102'
+                    : 'bg-white hover:bg-retro-crema/40 text-retro-terracota/80 border border-retro-terracota/10'
+                }`}
+              >
+                <span className="text-sm">{cat.emoji}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* TEMPORAL LOCK ALERT BANNER */}
@@ -550,15 +603,24 @@ export default function Catalog() {
                           )}
                         </div>
 
-                        {/* Macros Bullet */}
-                        <div className="text-[10px] sm:text-[11px] font-bold text-retro-terracota/60 mt-1.5 flex flex-wrap items-center gap-1">
-                          <span className="text-retro-terracota font-black">● {dish.macros?.calories || 0} Kcal</span>
-                          <span className="opacity-50">·</span>
-                          <span>P {dish.macros?.protein || 0}g</span>
-                          <span className="opacity-50">·</span>
-                          <span>C {dish.macros?.carbs || 0}g</span>
-                          <span className="opacity-50">·</span>
-                          <span>G {dish.macros?.fat || 0}g</span>
+                        {/* Enhanced Visual Macros Badges */}
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 font-sans">
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/60 shadow-2xs">
+                            <span>🔥</span>
+                            <span>{dish.macros?.calories || 0} kcal</span>
+                          </span>
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-700">
+                            <span className="font-extrabold text-stone-900">P</span>
+                            <span>{dish.macros?.protein || 0}g</span>
+                          </span>
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-700">
+                            <span className="font-extrabold text-stone-900">C</span>
+                            <span>{dish.macros?.carbs || 0}g</span>
+                          </span>
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-700">
+                            <span className="font-extrabold text-stone-900">G</span>
+                            <span>{dish.macros?.fat || 0}g</span>
+                          </span>
                         </div>
 
                         {/* Tags line */}
@@ -702,12 +764,21 @@ export default function Catalog() {
               </div>
             </div>
 
-            {/* Right Action: Verify / lock selection */}
-            <div>
+            {/* Right Action: Drawer toggle & Verify button */}
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowSummaryDrawer(true)}
+                className="px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider bg-retro-crema text-retro-terracota hover:bg-retro-crema/80 border border-retro-terracota/10 transition-all flex items-center space-x-1.5 font-sans"
+              >
+                <span>📋</span>
+                <span>Ver Resumen</span>
+              </button>
+
               {isAccepted ? (
                 <div className="flex items-center space-x-1.5 px-4.5 py-2.5 bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm">
                   <CheckCircle className="w-4 h-4 text-emerald-600 animate-pulse" />
-                  <span>Selección Confirmada y Enviada</span>
+                  <span>Selección Confirmada</span>
                 </div>
               ) : (
                 <button
@@ -717,13 +788,164 @@ export default function Catalog() {
                   className="px-5 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wider bg-retro-terracota hover:bg-retro-terracota/95 text-white transition-all shadow-md shadow-retro-terracota/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5 font-sans"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Verificar y Enviar Menú</span>
+                  <span>Verificar y Enviar</span>
                 </button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* SLIDE-OVER DRAWER FOR WEEKLY MENU SUMMARY */}
+      <AnimatePresence>
+        {showSummaryDrawer && (
+          <div className="fixed inset-0 z-[120] overflow-hidden font-sans text-left">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSummaryDrawer(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs"
+            />
+
+            {/* Sliding Panel */}
+            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="w-screen max-w-md bg-white shadow-2xl flex flex-col border-l border-retro-terracota/10"
+              >
+                {/* Drawer Header */}
+                <div className="p-5 bg-retro-terracota text-white flex items-center justify-between shadow-md">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-xl">📋</span>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider">Mi Menú de la Semana</h3>
+                      <p className="text-[10px] opacity-80 font-bold">Semana: {weekId}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSummaryDrawer(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Progress bar info */}
+                <div className="p-4 bg-retro-crema/30 border-b border-retro-terracota/10 flex items-center justify-between text-xs font-black">
+                  <span className="text-retro-terracota">Platillos Asignados:</span>
+                  <span className="bg-retro-terracota text-white px-2.5 py-0.5 rounded-full text-[10px]">
+                    {selectedMealIds.length} / {limit}
+                  </span>
+                </div>
+
+                {/* Days Breakdown */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                  {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map((day) => {
+                    const daySlots = selectedDays[day] || {};
+                    const dayNameCap = day === 'miercoles' ? 'Miércoles' : day.charAt(0).toUpperCase() + day.slice(1);
+
+                    return (
+                      <div key={day} className="bg-stone-50 rounded-2xl p-4 border border-stone-200/60 space-y-2.5">
+                        <div className="flex items-center justify-between pb-2 border-b border-stone-200/40">
+                          <span className="text-xs font-black text-retro-terracota uppercase tracking-wider">
+                            {dayNameCap}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setActiveDay(day);
+                              setShowSummaryDrawer(false);
+                            }}
+                            className="text-[10px] font-black text-retro-terracota/60 hover:text-retro-terracota underline"
+                          >
+                            Ir a {dayNameCap.substring(0, 3)}
+                          </button>
+                        </div>
+
+                        {/* Slots */}
+                        <div className="space-y-2 text-xs">
+                          {Object.entries(daySlots).map(([slotKey, dishId]) => {
+                            const slotName = slotKey === 'comida' ? 'Almuerzo' : slotKey === 'cena' ? 'Cena' : 'Snack';
+                            const dish = allDishes.find(d => d.id === dishId);
+
+                            return (
+                              <div key={slotKey} className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-100 shadow-2xs">
+                                <div className="flex items-center space-x-2.5 min-w-0">
+                                  <span className="text-[10px] font-black uppercase text-stone-400 w-14 flex-shrink-0">
+                                    {slotName}
+                                  </span>
+                                  {dish ? (
+                                    <div className="flex items-center space-x-2 truncate">
+                                      <img 
+                                        src={dish.imageUrl} 
+                                        alt={dish.name} 
+                                        className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
+                                        onError={(e) => { e.target.src = '/keto_salmon.webp'; }}
+                                      />
+                                      <span className="font-extrabold text-retro-terracota truncate text-xs">{dish.name}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-stone-400 italic text-[11px]">Sin asignar</span>
+                                  )}
+                                </div>
+
+                                {dish ? (
+                                  <button
+                                    onClick={() => removeDishFromSlot(day, slotKey)}
+                                    className="text-stone-400 hover:text-red-500 p-1"
+                                    title="Quitar platillo"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setActiveDay(day);
+                                      setActiveSlot(slotKey);
+                                      setShowSummaryDrawer(false);
+                                    }}
+                                    className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md hover:bg-emerald-100"
+                                  >
+                                    + Agregar
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Drawer Footer */}
+                <div className="p-4 bg-white border-t border-stone-200 flex items-center gap-3">
+                  <button
+                    onClick={() => setShowSummaryDrawer(false)}
+                    className="w-1/2 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-black uppercase tracking-wider"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    disabled={selectedMealIds.length === 0 || isAccepted}
+                    onClick={() => {
+                      setShowSummaryDrawer(false);
+                      setShowVerifyModal(true);
+                    }}
+                    className="w-1/2 py-3 bg-retro-terracota hover:bg-retro-terracota/90 text-white rounded-2xl text-xs font-black uppercase tracking-wider disabled:opacity-50 shadow-md"
+                  >
+                    Verificar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* VERIFY ORDER MODAL */}
       {showVerifyModal && (
