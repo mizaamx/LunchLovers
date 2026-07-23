@@ -178,6 +178,18 @@ export function MealSelectionProvider({ children }) {
       }));
       setAllDishes(dishesList);
 
+const sanitizeDaysStructure = (raw) => {
+  const defaultStructure = { lunes: {}, martes: {}, miercoles: {}, jueves: {}, viernes: {} };
+  if (!raw || typeof raw !== 'object') return defaultStructure;
+  return {
+    lunes: raw.lunes && typeof raw.lunes === 'object' ? raw.lunes : {},
+    martes: raw.martes && typeof raw.martes === 'object' ? raw.martes : {},
+    miercoles: raw.miercoles && typeof raw.miercoles === 'object' ? raw.miercoles : {},
+    jueves: raw.jueves && typeof raw.jueves === 'object' ? raw.jueves : {},
+    viernes: raw.viernes && typeof raw.viernes === 'object' ? raw.viernes : {}
+  };
+};
+
       // Local draft backup recovery if present and user logged in
       if (user?.uid) {
         try {
@@ -185,7 +197,7 @@ export function MealSelectionProvider({ children }) {
           if (draft) {
             const parsedDraft = JSON.parse(draft);
             if (parsedDraft && typeof parsedDraft === 'object') {
-              setSelectedDays(parsedDraft);
+              setSelectedDays(sanitizeDaysStructure(parsedDraft));
             }
           }
         } catch (e) {

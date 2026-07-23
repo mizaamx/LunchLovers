@@ -54,7 +54,8 @@ const MOCK_GENERIC_DISHES = [
 
 // Dynamic tag helper based on macro profile & keywords
 const getDishTags = (dish) => {
-  if (dish.tags) return dish.tags;
+  if (!dish) return ['Balanceado'];
+  if (dish.tags && Array.isArray(dish.tags)) return dish.tags;
   const tags = [];
   const nameLower = (dish.name || '').toLowerCase();
   const descLower = (dish.description || '').toLowerCase();
@@ -65,7 +66,7 @@ const getDishTags = (dish) => {
   if (nameLower.includes('vegan') || descLower.includes('tofu') || descLower.includes('garbanzo') || nameLower.includes('chiches') || descLower.includes('vegetal')) {
     tags.push('Vegano');
   }
-  if (dish.macros?.protein >= 30 || nameLower.includes('pui') || nameLower.includes('chicken') || nameLower.includes('saumon') || nameLower.includes('pavo')) {
+  if ((dish.macros?.protein || 0) >= 30 || nameLower.includes('pui') || nameLower.includes('chicken') || nameLower.includes('saumon') || nameLower.includes('pavo')) {
     tags.push('Alto en Proteína');
   }
   if (tags.length === 0) tags.push('Balanceado');
@@ -1052,10 +1053,9 @@ export default function Catalog() {
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* DISH DETAILS MODAL */}
-      {createPortal(
+      {selectedDishForModal && typeof document !== 'undefined' && document.body && createPortal(
         <AnimatePresence>
-          {selectedDishForModal && (
-            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1215,9 +1215,8 @@ export default function Catalog() {
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>,
-      document.body
+        </AnimatePresence>,
+        document.body
       )}
 
 
